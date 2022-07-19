@@ -20,9 +20,7 @@
 // -------------------------------------------------------------------------------
 
 
-
-int main()
-{
+int main(){
     int soquete;
     struct ifreq ir;
     struct sockaddr_ll endereco;
@@ -77,12 +75,13 @@ int main()
     //------------------------------------------------------------------------------------------
 
     // ENVIAR MENSAGEM -------------------------------------------------------------------------
-    if (send(soquete, "OE", 32, 0) == -1) {
+    if (send(soquete, "OIIIIIIIIIIII", 32, 0) == -1) {
         printf("Erro ao enviar mensagem!\n");
         printf("Motivo:  %s \n",strerror(errno));
+        exit(-1);
     } else {
         printf("Mensagem enviada com sucesso!\n");
     }
     //------------------------------------------------------------------------------------------
-	
+	return 1;
 }
