@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <errno.h>
 
-#define TENTATIVAS 50
+#define TENTATIVAS 50000
 
 
 int main(){
