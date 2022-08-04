@@ -1,69 +1,88 @@
-#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/ethernet.h>
+#include <linux/if_packet.h>
+#include <linux/if.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdio.h>
+#include <netinet/in.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <net/ethernet.h>
-#include <netdb.h>
-#include <linux/if_arp.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <poll.h>
-#include <dirent.h>
-#include <sys/statvfs.h>
 
 #define TENTATIVAS 50
 
-typedef struct sockaddr_ll endereco;
 
 int main(){
 
-    int soquete, i;
-    struct pollfd p;
-    char *buf;
-	char *comandoAux, *argumentoAux, *lComandoAux;
-    endereco enderecoSocket;
-    char * cwd;
+    int soquete, i = 0;
+    struct ifreq ir;
+    struct sockaddr_ll endereco;
+    struct packet_mreq mr;
+    char *device = "lo", *mensagem;
 
-	comandoAux = (char *) malloc(100);
-	lComandoAux = (char *) malloc(100);
-	argumentoAux = (char *) malloc(100);
-    
-	
-    system("ifconfig eth0 promisc");
-    soquete = socket(AF_PACKET , SOCK_RAW , htons(ETH_P_ALL)) ;
-   
-    memset(&enderecoSocket, 0, sizeof(endereco));
-	enderecoSocket.sll_family = AF_PACKET;
-	enderecoSocket.sll_protocol = htons(ETH_P_ALL);
-	enderecoSocket.sll_pkttype = PACKET_OTHERHOST;
-	enderecoSocket.sll_ifindex = 2;
-	enderecoSocket.sll_hatype = ARPHRD_ETHER;
-	enderecoSocket.sll_halen = ETH_ALEN;
-	enderecoSocket.sll_addr[0] = 0x54 ;
-	enderecoSocket.sll_addr[1] = 0x04 ;
-	enderecoSocket.sll_addr[2] = 0xA6 ;
-	enderecoSocket.sll_addr[3] = 0x2C ;
-	enderecoSocket.sll_addr[4] = 0x57 ;
-	enderecoSocket.sll_addr[5] = 0x1F ;
-	enderecoSocket.sll_addr[6] = 0x00 ; 
-	enderecoSocket.sll_addr[7] = 0x00 ;  
-    
-    p.fd = soquete;
-	p.events = POLLIN;
+    // CRIAR SOCKET ----------------------------------------------------------------------------
+	soquete = socket(AF_PACKET , SOCK_RAW , htons(ETH_P_ALL)) ;
+    if(soquete < 0){
+		printf("Erro ao criar Socket!\n");
+		exit(-1);
+	} else {
+        printf("Socket criado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
 
-    buf = getcwd(0, 0);
-	strcat(buf, "$ ");
-	printf("%s", buf);
-    fflush(stdin);
+    // CONECTAR AO DISPOSITIVO -----------------------------------------------------------------
+    memset(&ir, 0, sizeof(struct ifreq));  	
+    int device_size = sizeof(device);
+    memcpy(ir.ifr_name, device, device_size);
+    if (ioctl(soquete, SIOCGIFINDEX, &ir) == -1) {
+        printf("Erro em ioctl!\n");
+        printf("Motivo:  %s \n",strerror(errno));
+     	exit(-1);
+    } else {
+        printf("Ioctl executado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
 
-	fgets(lComandoAux, 100, stdin);
-	sscanf(lComandoAux, "%s", comandoAux);
+    // IP DO DISPOSITIVO -----------------------------------------------------------------------
+    memset(&endereco, 0, sizeof(endereco)); 	
+    endereco.sll_family = AF_PACKET;
+    endereco.sll_protocol = htons(ETH_P_ALL);
+    endereco.sll_ifindex = ir.ifr_ifindex;
+    if (bind(soquete, (struct sockaddr *)&endereco, sizeof(endereco)) == -1) {
+        printf("Erro no bind!\n");
+        exit(-1);
+    } else {
+        printf("Bind executado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
 
-    printf("Mensagem recebida = %s \n", comandoAux);
+    // MODO PROMISCUO --------------------------------------------------------------------------
+    memset(&mr, 0, sizeof(mr));         
+    mr.mr_ifindex = ir.ifr_ifindex;
+    mr.mr_type = PACKET_MR_PROMISC;
+    if (setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) == -1)	{
+        printf("Erro ao fazer setsockopt!\n");
+        exit(-1);
+    } else {
+        printf("Setsockopt executado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
 
+    // LEITURA DA MENSAGEM ---------------------------------------------------------------------
+    for (i = 0; (recv(soquete, mensagem, 32, 0) == -1) && (i < TENTATIVAS); i++) {
+        printf("Erro ao receber mensagem!\n");
+        printf("Motivo:  %s \n",strerror(errno));
+        exit(-1);
+    } 
+    printf("Sucesso ao receber mensagem!\n");
+
+    if (i >= TENTATIVAS) {
+        printf("Erro , número máximo de tentativas feitas!\n");
+        exit(-1);
+    }
+    //------------------------------------------------------------------------------------------
+
+    printf("Mensagem recebida = %s \n", mensagem);
     return 1;
-}
+} 

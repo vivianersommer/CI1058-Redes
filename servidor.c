@@ -1,49 +1,79 @@
-#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/ethernet.h>
+#include <linux/if_packet.h>
+#include <linux/if.h>
 #include <stdlib.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdio.h>
+#include <netinet/in.h>
 #include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <net/ethernet.h>
-#include <netdb.h>
-#include <linux/if_arp.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <poll.h>
-#include <dirent.h>
-#include <sys/statvfs.h>
 
-int main(){
+
+int main()
+{
     int soquete;
     struct ifreq ir;
     struct sockaddr_ll endereco;
     struct packet_mreq mr;
-    struct pollfd poll;
-    char *device = "eth0";
+    char *device = "lo";
 
-    system("ifconfig eth0 promisc");
+    // CRIAR SOCKET ----------------------------------------------------------------------------
 	soquete = socket(AF_PACKET , SOCK_RAW , htons(ETH_P_ALL)) ;
-    memset(&endereco, 0, sizeof(struct sockaddr_ll)); 	
+    if(soquete < 0){
+		printf("Erro ao criar Socket!\n");
+		exit(-1);
+	} else {
+        printf("Socket criado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
+
+    // CONECTAR AO DISPOSITIVO -----------------------------------------------------------------
+    memset(&ir, 0, sizeof(struct ifreq));  	
+    int device_size = sizeof(device);
+    memcpy(ir.ifr_name, device, device_size);
+    if (ioctl(soquete, SIOCGIFINDEX, &ir) == -1) {
+        printf("Erro em ioctl!\n");
+        printf("Motivo:  %s \n",strerror(errno));
+     	exit(-1);
+    } else {
+        printf("Ioctl executado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
+
+    // IP DO DISPOSITIVO -----------------------------------------------------------------------
+    memset(&endereco, 0, sizeof(endereco)); 	
     endereco.sll_family = AF_PACKET;
     endereco.sll_protocol = htons(ETH_P_ALL);
-	endereco.sll_pkttype = PACKET_OTHERHOST;
-	endereco.sll_ifindex = 2;
-	endereco.sll_hatype = ARPHRD_ETHER;
-	endereco.sll_halen = ETH_ALEN;
-	endereco.sll_addr[0] = 0x54 ;
-	endereco.sll_addr[1] = 0x04 ;
-	endereco.sll_addr[2] = 0xA6 ;
-	endereco.sll_addr[3] = 0x2C ;
-	endereco.sll_addr[4] = 0x57 ;
-	endereco.sll_addr[5] = 0x1F ;
-	endereco.sll_addr[6] = 0x00 ;   
-	endereco.sll_addr[7] = 0x00 ;   
+    endereco.sll_ifindex = ir.ifr_ifindex;
+    if (bind(soquete, (struct sockaddr *)&endereco, sizeof(endereco)) == -1) {
+        printf("Erro no bind!\n");
+        exit(-1);
+    } else {
+        printf("Bind executado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
 
-    poll.fd = soquete;
-	poll.events = POLLIN;
+    // MODO PROMISCUO --------------------------------------------------------------------------
+    memset(&mr, 0, sizeof(mr));         
+    mr.mr_ifindex = ir.ifr_ifindex;
+    mr.mr_type = PACKET_MR_PROMISC;
+    if (setsockopt(soquete, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) == -1)	{
+        printf("Erro ao fazer setsockopt!\n");
+        exit(-1);
+    } else {
+        printf("Setsockopt executado com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
 
-    sendto(soquete, "OI", 21, 0, (struct sockaddr *) &endereco, sizeof(struct sockaddr_ll));
- 	return 1;
+    // ENVIAR MENSAGEM -------------------------------------------------------------------------
+    if (send(soquete, "OE", 32, 0) == -1) {
+        printf("Erro ao enviar mensagem!\n");
+        printf("Motivo:  %s \n",strerror(errno));
+    } else {
+        printf("Mensagem enviada com sucesso!\n");
+    }
+    //------------------------------------------------------------------------------------------
+
 }
