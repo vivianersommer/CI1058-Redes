@@ -15,11 +15,11 @@
 int main()
 {
     int soquete, lidos;
-    static char buff[68];
+    mensagem *teste = malloc(sizeof(mensagem));
 
     soquete = ConexaoRawSocket("lo");
-    lidos = recv(soquete, buff, sizeof(buff), 0);
+    lidos = recv(soquete, teste, sizeof(teste), 0);
     printf("Mensagem recebida com sucesso!\n");
-    printf("Mensagem  = %s!\n", buff);
+    printf("Mensagem  = %s!\n", teste->dados);
 
 }
