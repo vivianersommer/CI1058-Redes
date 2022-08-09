@@ -11,3 +11,5 @@ Rodar cliente:
 gcc cliente.c conexao.c conexao.h -o cliente
 sudo ./cliente 
 ````
+
+**OBS: sempre rodar primeiro o servidor!**
