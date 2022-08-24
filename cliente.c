@@ -23,11 +23,12 @@ int cliente(){
 
     int soquete;
     struct Mensagem *teste = malloc(sizeof(struct Mensagem));
+    teste->dados = malloc(sizeof(char) * 10);
     teste->marcadorInicio = 0;
     teste->tamanho = 0;
     teste->sequencia = 0;
     teste->tipo = 0;
-    teste->dados = "123456789012345678901234";
+    teste->dados = "123456789";
     teste->paridade = 0;
 
     soquete = ConexaoRawSocket("lo");

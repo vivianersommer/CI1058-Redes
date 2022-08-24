@@ -23,14 +23,16 @@ int main(int argc, char *argv[]) {
     value = strcmp(tipo,"servidor");
     if (value == 0){
         servidor();
-    } 
-    value = strcmp(tipo,"cliente");
-
-    if (value == 0){
-        cliente();
     } else {
-        printf("O segundo argumento não está certo, por favor rode do seguinte modo: \n");
-        printf("./main <cliente/servidor> \n");
-        exit(1);  
+        value = strcmp(tipo,"cliente");
+
+        if (value == 0){
+            cliente();
+        } else {
+            printf("O segundo argumento não está certo, por favor rode do seguinte modo: \n");
+            printf("./main <cliente/servidor> \n");
+            exit(1);  
+        }
     }
+
 }
