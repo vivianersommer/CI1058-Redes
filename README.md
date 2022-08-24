@@ -1,15 +1,9 @@
 # CI1058-Redes
 
-Rodar servidor:
+Rodar trabalho:
 ````
-gcc servidor.c conexao.c conexao.h -o servidor
-sudo ./servidor 
-````
-
-Rodar cliente:
-````
-gcc cliente.c conexao.c conexao.h -o cliente
-sudo ./cliente 
+make
+sudo ./main <cliente/servidor> 
 ````
 
 **OBS: sempre rodar primeiro o servidor!**

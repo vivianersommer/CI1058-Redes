@@ -13,7 +13,7 @@
 #include "conexao.h"
 
 
-int main(){
+int cliente(){
 
     // int soquete;
     // char *mensagem = "123456789012345678901234";
@@ -22,7 +22,7 @@ int main(){
     // printf("Mensagem enviada com sucesso!\n");
 
     int soquete;
-    mensagem *teste = malloc(sizeof(mensagem));
+    struct Mensagem *teste = malloc(sizeof(struct Mensagem));
     teste->marcadorInicio = 0;
     teste->tamanho = 0;
     teste->sequencia = 0;
@@ -39,5 +39,7 @@ int main(){
     } else {
         printf("Mensagem enviada com sucesso!\n");
     }
+
+    return 1;
 
 } 

@@ -12,14 +12,14 @@
 #include <unistd.h>
 #include "conexao.h"
 
-int main()
-{
+int servidor() {
     int soquete, lidos;
-    mensagem *teste = malloc(sizeof(mensagem));
+    struct Mensagem *teste = malloc(sizeof(struct Mensagem));
 
     soquete = ConexaoRawSocket("lo");
     lidos = recv(soquete, teste, sizeof(teste), 0);
     printf("Mensagem recebida com sucesso!\n");
     printf("Mensagem  = %s!\n", teste->dados);
 
+    return 1;
 }
