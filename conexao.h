@@ -3,7 +3,7 @@
 
 
 typedef struct Mensagem{
-   int  marcadorInicio : 8;
+   int  marcadorInicio:8;
    int  tamanho:6;
    int  sequencia:4;
    int  tipo:6;

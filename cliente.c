@@ -12,28 +12,27 @@
 #include <unistd.h>
 #include "conexao.h"
 
+struct Mensagem *cria_mensagem(){
+    struct Mensagem *mensagem = malloc(sizeof(struct Mensagem));
+    mensagem->dados = malloc(sizeof(char) * 10);
+    mensagem->marcadorInicio = 00111100;
+    mensagem->tamanho = 0;
+    mensagem->sequencia = 0;
+    mensagem->tipo = 0;
+    mensagem->dados = "123456789";
+    mensagem->paridade = 0;
+
+    return mensagem;
+}
 
 int cliente(){
 
-    // int soquete;
-    // char *mensagem = "123456789012345678901234";
-    // soquete = ConexaoRawSocket("lo");
-    // int escrito = write(soquete, mensagem, strlen(mensagem) + 1);
-    // printf("Mensagem enviada com sucesso!\n");
-
     int soquete;
-    struct Mensagem *teste = malloc(sizeof(struct Mensagem));
-    teste->dados = malloc(sizeof(char) * 10);
-    teste->marcadorInicio = 0;
-    teste->tamanho = 0;
-    teste->sequencia = 0;
-    teste->tipo = 0;
-    teste->dados = "123456789";
-    teste->paridade = 0;
+    struct Mensagem *mensagem = cria_mensagem();
 
     soquete = ConexaoRawSocket("lo");
-    printf("Tamanho = %ld\n", sizeof(teste));
-    int escrito = write(soquete, teste, sizeof(teste) > 16? sizeof(teste) : 16);
+    int escrito = write(soquete, mensagem, sizeof(struct Mensagem) > 16? sizeof(struct Mensagem) : 16);
+
     if (escrito == -1){
         printf("Mensagem não enviada!\n");
         printf("Erro = %d\n", escrito);
