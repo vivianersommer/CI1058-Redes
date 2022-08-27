@@ -8,36 +8,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include "conexao.h"
 
-struct Mensagem *cria_mensagem(){
-    struct Mensagem *mensagem = malloc(sizeof(struct Mensagem));
-    mensagem->dados = malloc(sizeof(char) * 10);
-    mensagem->marcadorInicio = 00111100;
-    mensagem->tamanho = 0;
-    mensagem->sequencia = 0;
-    mensagem->tipo = 0;
-    mensagem->dados = "123456789";
-    mensagem->paridade = 0;
-
-    return mensagem;
-}
 
 int cliente(){
 
     int soquete;
-    struct Mensagem *mensagem = cria_mensagem();
+
+    struct Mensagem *msg = malloc(sizeof(struct Mensagem));
+
+    msg->marcadorInicio = 0x7E; // hex 7E = 01111110
+    strncpy(msg->dados, "AAAAAAAAAAAAAAAAAAAAAAA", MAX_DADOS);;
 
     soquete = ConexaoRawSocket("lo");
-    int escrito = write(soquete, mensagem, sizeof(struct Mensagem) > 16? sizeof(struct Mensagem) : 16);
+    
+    int escrito = send(soquete, msg, sizeof(struct Mensagem), 0);
 
     if (escrito == -1){
         printf("Mensagem não enviada!\n");
         printf("Erro = %d\n", escrito);
     } else {
         printf("Mensagem enviada com sucesso!\n");
+        printf("Mensagem  = \n%s \n%c\n", msg->dados, msg->marcadorInicio);
     }
 
     return 1;

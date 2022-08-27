@@ -13,23 +13,18 @@
 #include "conexao.h"
 
 
-struct Mensagem *recebe_mensagem(){
-    struct Mensagem *mensagem = malloc(sizeof(struct Mensagem));
-    mensagem->dados = malloc(sizeof(char) * 10);
-    return mensagem;
-}
-
 int servidor() {
 
-    int soquete, lidos;
-    struct Mensagem *mensagem = recebe_mensagem();
+    int soquete;
+    struct Mensagem *msg = malloc(sizeof(struct Mensagem));
 
     soquete = ConexaoRawSocket("lo");
     
-    recv(soquete, mensagem, sizeof(struct Mensagem), 0);
+    recv(soquete, msg, sizeof(struct Mensagem), 0); 
 
     printf("Mensagem recebida com sucesso!\n");
-    printf("Mensagem  = %d!\n", mensagem->marcadorInicio);
+
+    printf("Mensagem  = \n%s \n%c\n", msg->dados, msg->marcadorInicio);
 
     return 1;
 }
