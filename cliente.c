@@ -14,23 +14,32 @@
 int cliente(){
 
     int soquete;
+    struct timeval timeout;
+    struct Mensagem *mensagem = malloc(sizeof(struct Mensagem));
 
-    struct Mensagem *msg = malloc(sizeof(struct Mensagem));
-
-    msg->marcadorInicio = 0x7E; // hex 7E = 01111110
-    strncpy(msg->dados, "AAAAAAAAAAAAAAAAAAAAAAA", MAX_DADOS);;
+    mensagem->marcadorInicio = 0x7E; // hex 7E = 01111110
+    strncpy(mensagem->dados, "AAAAAAAAAAAAAAAAAAAAAAA", MAX_DADOS);;
 
     soquete = ConexaoRawSocket("lo");
     
-    int escrito = send(soquete, msg, sizeof(struct Mensagem), 0); //que isso?
+    int escrito = send(soquete, mensagem, sizeof(struct Mensagem), 0); //que isso? escrito?
 
-    if (escrito == -1){
+    while (escrito == -1 && timeout.tv_usec != 0){
         printf("Mensagem não enviada!\n");
         printf("Erro = %d\n", escrito);
-    } else {
-        printf("Mensagem enviada com sucesso!\n");
-        printf("Mensagem  = \n%s \n%c\n", msg->dados, msg->marcadorInicio);
+        printf("TENTANDO NOVAMENTE!\n");
+        escrito = send(soquete, mensagem, sizeof(struct Mensagem), 0);
+
+    } 
+
+    if(timeout.tv_usec != 0){
+        printf("TIMEOUT !!!\n");
+        exit(1);
     }
+
+    printf("Mensagem enviada com sucesso!\n");
+    printf("Mensagem  = \n%s \n%c\n", mensagem->dados, mensagem->marcadorInicio);
+    
 
     return 1;
 

@@ -16,28 +16,27 @@
 int servidor() {
 
     int soquete;
+    unsigned char erro = '0';
+    struct timeval timeout;
     struct Mensagem *mensagem = malloc(sizeof(struct Mensagem));
 
     soquete = ConexaoRawSocket("lo");
     
     recv(soquete, mensagem, sizeof(struct Mensagem), 0); 
     
-    /*while(!timeout){
-        erro = paridade(mensagem)
-        if (!erro){
+    while(timeout.tv_usec != 0){
+        erro = paridade(mensagem);
+        if (erro == '0'){
             //ack
             printf("Mensagem recebida com sucesso!\n");
             printf("Mensagem  = \n%s \n%c\n", mensagem->dados, mensagem->marcadorInicio);
             return 1;
         }else{
             //nack
-            recv(soquete, mensagem, sizeof(struct Mensagem), 0); 
+            recv(soquete, mensagem, sizeof(struct Mensagem), 0);
+            timeout.tv_usec--; //acho que n eh isso, mas eh algo assim
         }
     }
-*/
-
-
-
     return -1;
 }
 
