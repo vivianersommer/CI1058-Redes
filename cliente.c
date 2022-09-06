@@ -22,7 +22,7 @@ int cliente(){
 
     soquete = ConexaoRawSocket("lo");
     
-    int escrito = send(soquete, msg, sizeof(struct Mensagem), 0);
+    int escrito = send(soquete, msg, sizeof(struct Mensagem), 0); //que isso?
 
     if (escrito == -1){
         printf("Mensagem não enviada!\n");

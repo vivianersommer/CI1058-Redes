@@ -7,6 +7,7 @@
 
 int main(int argc, char *argv[]) {
 
+    struct timeval timeout; //acho que da pra usar a timeeval pra fazer o timeout
     char *tipo = malloc(sizeof(char) * 10);
     int value = 0;
 
@@ -34,5 +35,7 @@ int main(int argc, char *argv[]) {
             exit(1);  
         }
     }
+
+   
 
 }
