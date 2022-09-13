@@ -12,25 +12,10 @@
 #include "conexao.h"
 #include "cliente.h"
 
-    // int escrito = send(soquete, mensagem, sizeof(struct Mensagem), 0); //que isso? escrito?
-    // while (escrito == -1 && timeout.tv_usec != 0){
-    //     printf("Mensagem não enviada!\n");
-    //     printf("Erro = %d\n", escrito);
-    //     printf("TENTANDO NOVAMENTE!\n");
-    //     escrito = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-    // } 
-    // if(timeout.tv_usec == 0){
-    //     printf("TIMEOUT !!!\n");
-    //     exit(1);
-    // }
-    // printf("Mensagem enviada com sucesso!\n");
-    // printf("Mensagem  = \n%s \n%c\n", mensagem->dados, mensagem->marcadorInicio);
-
 int habilitar_rede(){
 
     // system("ifconfig eth0 promisc");
     int soquete = ConexaoRawSocket("lo"); // TODO: quando for para o cabo, usar eth0
-
     return soquete;
 }
 
@@ -85,7 +70,7 @@ TipoComando *leitura(){
                     puts("Comando inválido!!");
                     puts("Tente novamente!!");
                 }
-            }
+        }
 	}
 
     free(diretorio_atual);
@@ -110,14 +95,19 @@ Mensagem* cria_mensagem(unsigned char sequencia, TipoComando* tipoComando) {
     return mensagem;
 }
 
-void ls_remoto(TipoComando* tipoComando) {
+void envia_mensagem(Mensagem *mensagem, int soquete) {
+	int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
+    printf("\nRESULTADO DO SEND, QUANTOS BYTES ELE ENVIOU: %i\n", result_enviar);
+}
+
+void ls_remoto(TipoComando* tipoComando, int soquete) {
 
 	Mensagem *mensagem = cria_mensagem('0', tipoComando); //cria mensagem do tipo lsr
-	//enviar_mensagem(mensagem); //envia mensagem do lsr
+	envia_mensagem(mensagem, soquete); //envia mensagem do lsr
 	//recebe_arquivo(mensagem);
 }
 
-void comandos(){
+void comandos(int soquete){
 
 	int acaba = 0;
 	TipoComando* tipocomando = malloc(sizeof(TipoComando));
@@ -127,7 +117,7 @@ void comandos(){
 
 		 switch (tipocomando->tipo) {
              case 0: //LS Remoto 
-                ls_remoto(tipocomando);
+                ls_remoto(tipocomando, soquete);
                 break;
         //     case 1: //LS Local
         //         comando_ls_local(comando);
@@ -160,7 +150,7 @@ void comandos(){
 int cliente(){
 
     int soquete = habilitar_rede();
-    comandos();
+    comandos(soquete);
     desabilitar_rede(soquete);
     
     return 0;
