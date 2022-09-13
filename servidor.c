@@ -12,6 +12,18 @@
 #include <unistd.h>
 #include "conexao.h"
 
+// //Fazendo a paridade vertical em 8 bits, cada char tem 8 bits, entao eh so fazer xor com cada posicao do campo dados
+// unsigned char paridade(unsigned char* dados){
+
+//     unsigned char paridades;
+
+//     for(int i=0; i<MAX_DADOS; i++){
+//         paridades = paridades ^ dados[i];
+//     }
+
+//     return paridades;
+
+// }
 
 int servidor() {
 
@@ -24,31 +36,18 @@ int servidor() {
     
     recv(soquete, mensagem, sizeof(struct Mensagem), 0); 
     
-    while(timeout.tv_usec != 0){
-        erro = paridade(mensagem);
-        if (erro == '0'){
-            //ack
-            printf("Mensagem recebida com sucesso!\n");
-            printf("Mensagem  = \n%s \n%c\n", mensagem->dados, mensagem->marcadorInicio);
-            return 1;
-        }else{
-            //nack
-            recv(soquete, mensagem, sizeof(struct Mensagem), 0);
-            timeout.tv_usec--; //acho que n eh isso, mas eh algo assim
-        }
-    }
+    // while(timeout.tv_usec != 0){
+    //     erro = paridade(mensagem);
+    //     if (erro == '0'){
+    //         //ack
+    //         printf("Mensagem recebida com sucesso!\n");
+    //         printf("Mensagem  = \n%s \n%c\n", mensagem->dados, mensagem->marcadorInicio);
+    //         return 1;
+    //     }else{
+    //         //nack
+    //         recv(soquete, mensagem, sizeof(struct Mensagem), 0);
+    //         timeout.tv_usec--; //acho que n eh isso, mas eh algo assim
+    //     }
+    // }
     return -1;
-}
-
-//Fazendo a paridade vertical em 8 bits, cada char tem 8 bits, entao eh so fazer xor com cada posicao do campo dados
-unsigned char paridade(unsigned char* dados){
-
-    unsigned char paridade;
-
-    for(int i=0; i<MAX_DADOS; i++){
-        paridade = paridade ^ dados[i];
-    }
-
-    return paridade;
-
 }

@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     char *tipo = malloc(sizeof(char) * 10);
     int value = 0;
 
-    printf("-------------- Bem vindo ao jogo do Trabalho 1 de Redes 1 --------------\n");  
+    printf("-------------- Bem vindo ao Trabalho 1 de Redes 1 --------------\n");  
 
     if(argc < 2) {
         printf("Você esqueceu de passar alguns parâmetros necessários, por favor rode do seguinte modo: \n");
