@@ -1,6 +1,7 @@
 #ifndef __CLIENTE__
 #define __CLIENTE__
 
+#include "conexao.h"
 #define MAX 100
 
 typedef struct TipoComando{
@@ -9,7 +10,7 @@ typedef struct TipoComando{
 	char* argumento; //tamanho maximo do argumento
 }TipoComando;
 
-struct Mensagem *cria_mensagem();
+Mensagem *cria_mensagem(unsigned char sequencia, TipoComando* tipoComando);
 int habilitar_rede();
 TipoComando *leitura();
 void comandos();

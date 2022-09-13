@@ -38,7 +38,6 @@ void desabilitar_rede(int soquete){
 
     close(soquete);
 	// system("ifconfig eth0 -promisc");
-
 }
 
 // leitura dos comandos a partir de um "falso" terminal
@@ -95,18 +94,41 @@ TipoComando *leitura(){
     return tipoComando;
 }
 
+Mensagem* cria_mensagem(unsigned char sequencia, TipoComando* tipoComando) {
+
+    Mensagem *mensagem = malloc(sizeof(Mensagem));
+	mensagem->marcadorInicio =  0x7E; // 0x7E = 01111110
+	mensagem->tamanho = strlen(tipoComando->argumento);
+	mensagem->sequencia = sequencia;
+	mensagem->tipo = tipoComando->tipo;
+	mensagem->paridade = paridade(tipoComando->argumento, mensagem->tamanho); 
+
+	for (int i = 0; i < MAX_DADOS; i++) {
+		mensagem->dados[i] = tipoComando->argumento[i];
+	}
+
+    return mensagem;
+}
+
+void ls_remoto(TipoComando* tipoComando) {
+
+	Mensagem *mensagem = cria_mensagem('0', tipoComando); //cria mensagem do tipo lsr
+	//enviar_mensagem(mensagem); //envia mensagem do lsr
+	//recebe_arquivo(mensagem);
+}
+
 void comandos(){
 
 	int acaba = 0;
-	TipoComando* comando = malloc(sizeof(TipoComando));
+	TipoComando* tipocomando = malloc(sizeof(TipoComando));
 
 	do {
-		comando = leitura();
+		tipocomando = leitura();
 
-		// switch (comando->tipo) {
-        //     case 0: //LS Remoto 
-        //         comando_ls_remoto(comando);
-        //         break;
+		 switch (tipocomando->tipo) {
+             case 0: //LS Remoto 
+                ls_remoto(tipocomando);
+                break;
         //     case 1: //LS Local
         //         comando_ls_local(comando);
         //         break;
@@ -128,7 +150,9 @@ void comandos(){
         //     case 7: //MKDIR Local
         //         comando_cat(comando->argumento);
         //         break;
-        // }
+            default:
+                break;
+         }
 
 	} while (!acaba);    
 }

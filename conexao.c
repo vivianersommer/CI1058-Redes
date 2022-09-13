@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <netinet/in.h>
-
+#include "cliente.h"
 
 int ConexaoRawSocket(char *device)
 {
@@ -50,4 +50,16 @@ int ConexaoRawSocket(char *device)
   }
 
   return soquete;
+}
+
+unsigned char paridade(unsigned char* dados, unsigned char tamanho){
+
+  // TODO: ver se isso faz sentido depois k k k 
+  unsigned char paridades;
+
+  for(int i=0; i < tamanho; i++){
+    paridades = paridades ^ dados[i];
+  }
+
+  return paridades;
 }

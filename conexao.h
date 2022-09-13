@@ -13,5 +13,6 @@ typedef struct Mensagem{
 }Mensagem;
 
 int ConexaoRawSocket(char *device);
+unsigned char paridade(unsigned char* dados, unsigned char tamanho);
 
 #endif
