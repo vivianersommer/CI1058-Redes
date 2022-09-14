@@ -38,7 +38,6 @@ int processo_poll(Mensagem *mensagem, int soquete) {
 	struct pollfd *fds;	
 	do {
 		poll_resultado = poll(fds, 1, 1000); //espera por algum evento vindo da descricao do arquivo
-		//printf("poll_resultado = %d\n", poll_resultado);
 		switch (poll_resultado) {
 			case -1:
 				printf("Erro na função poll, socorro!!\n");
@@ -56,21 +55,8 @@ int processo_poll(Mensagem *mensagem, int soquete) {
 				break;
 			default:
 				if (fds->revents == POLLIN) { //tem coisa pra le, corre
-					int result_receber = recv(soquete, buffer, MAX_DADOS, 0);
-					fsync(soquete); //?
-					if (mensagem->dados[0] == 0x7E) {
-
-						//------- refaz a mensagem ---------------------------------------------------------
-						mensagem->marcadorInicio = buffer[0];
-						mensagem->tamanho = (buffer[1] << 4) >> 4;
-						mensagem->sequencia = buffer[1] >> 4;
-						mensagem->tipo = (buffer[2] << 4) >> 4;
-						mensagem->paridade = buffer[2] >> 4;
-						for (poll_resultado = 0; poll_resultado < MAX_DADOS; poll_resultado++) {
-							mensagem->dados[poll_resultado] = buffer[poll_resultado + 3];
-						}
-						//----------------------------------------------------------------------------------
-
+					int result_receber = recv(soquete, mensagem, sizeof(struct Mensagem), 0);
+					if (mensagem->marcadorInicio == 0x7E) {
 						fim = 1;
 						resultado_paridade = paridade(mensagem->dados, mensagem->tamanho); //faz a paridade pra ver se da tudo certo
 						if (resultado_paridade == mensagem->paridade) {
@@ -113,9 +99,7 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 	Mensagem *mensagem = cria_mensagem(prox_enviar, tipo, buffer);
 	envia_mensagem(mensagem, soquete);
 	// -----------------------------------------------------------------------------------
-    
-	puts("ATÉ AQUI, OK!");
-	
+    	
     // tratamento da sequencia -----------------------------------------------------------
 	if (prox_enviar < MAX_SEQ) {
 		prox_enviar++;
