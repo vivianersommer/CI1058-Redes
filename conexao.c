@@ -78,3 +78,44 @@ unsigned char paridade(unsigned char* dados, unsigned char tamanho){
 
   return paridades;
 }
+
+Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados) {
+	
+  Mensagem *mensagem = malloc(sizeof(Mensagem));
+	mensagem->marcadorInicio = 0x7E; //01111110
+	mensagem->tamanho = strlen(dados);
+	mensagem->sequencia = sequencia;
+	mensagem->tipo = tipo;
+	mensagem->paridade = paridade(dados, mensagem->tamanho);
+
+	for (int i = 0; i < MAX_DADOS; i++) {
+		mensagem->dados[i] = dados[i];
+	}
+
+	return mensagem;
+}
+
+void envia_mensagem(Mensagem *mensagem, int soquete) {
+    int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
+    puts("Enviando...");
+}
+
+int espera_mensagem(Mensagem *mensagem, int soquete) {
+
+	  recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
+    // checa o marcador de início e a paridade da mensagem recebida -------------------------------------------------------
+    if ((mensagem->marcadorInicio == 0x7E)) {
+        if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade){
+            // mensagem = cria_mensagem(0x00, OK, "");
+            // envia_mensagem(mensagem, soquete);
+            return 1; //mensagem recebida com paridade certa
+        } else {
+            // mensagem = cria_mensagem(0x00, ERRO, F);
+            // envia_mensagem(mensagem, soquete);
+            return 0; //erro na paridade
+        }
+	  }
+    // --------------------------------------------------------------------------------------------------------------------
+	
+    return -1; //lixo da placa de rede
+}

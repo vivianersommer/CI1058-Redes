@@ -11,9 +11,10 @@ typedef struct TipoComando{
 }TipoComando;
 
 void leitura(TipoComando *tipoComando);
-Mensagem* cria_mensagem_cliente(unsigned char sequencia, TipoComando* tipoComando, unsigned char tipo);
-void envia_mensagem_cliente(Mensagem *mensagem, int soquete);
+void recebe_resposta_ls(Mensagem *mensagem, int soquete);
+void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned char prox_enviar, unsigned char prox_receber, int soquete);
 void ls_remoto(TipoComando* tipoComando, int soquete);
+void ls_local(TipoComando* tipoComando);
 void comandos(int soquete);
 int cliente();
 

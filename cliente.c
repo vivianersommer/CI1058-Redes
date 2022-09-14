@@ -53,36 +53,14 @@ void leitura(TipoComando* tipoComando){
     free(linha_terminal);
 }
 
-Mensagem* cria_mensagem_cliente(unsigned char sequencia, TipoComando* tipoComando, unsigned char tipo) {
-
-    Mensagem *mensagem = malloc(sizeof(Mensagem));
-	mensagem->marcadorInicio =  0x7E; // 0x7E = 01111110
-	mensagem->tamanho = strlen(tipoComando->argumento);
-	mensagem->sequencia = sequencia;
-	mensagem->tipo = tipo;
-	mensagem->paridade = paridade(tipoComando->argumento, mensagem->tamanho); 
-
-	for (int i = 0; i < MAX_DADOS; i++) {
-		mensagem->dados[i] = tipoComando->argumento[i];
-	}
-
-    return mensagem;
-}
-
-void envia_mensagem_cliente(Mensagem *mensagem, int soquete) {
-	int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-}
-
 void recebe_resposta_ls(Mensagem *mensagem, int soquete){
 
     do {
         recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
         if ((mensagem->marcadorInicio == 0x7E) && (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade)) {
             if(mensagem->tipo == OK){
-                printf("Mensagem recebida com sucesso!!\n");
                 break;
             } else if (mensagem->tipo == ERRO){
-                printf("Mensagem não foi recebida""\n");
                 printf("Erro: ");
                 for(int i = 0; i<mensagem->tamanho; i++){
                     printf("%c", mensagem->dados[i]);
@@ -96,14 +74,114 @@ void recebe_resposta_ls(Mensagem *mensagem, int soquete){
 
 }
 
+void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned char prox_enviar, unsigned char prox_receber, int soquete) {
+	
+    int fim = 0;
+	FILE *arquivo;
+
+	if (tipo == DADOS) {
+		arquivo = fopen(nome, "w"); 
+		// chmod(nome, (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)); //seta as permissões
+	}
+
+	do {
+		int resultado_espera_mensagem = espera_mensagem(mensagem, soquete); //espera uma resposta
+		if (mensagem->sequencia == 0x00 && resultado_espera_mensagem == 1) {
+			if (mensagem->sequencia == prox_receber) { //se a sequência for a esperada
+				if ((mensagem->tipo == MOSTRA_TELA && tipo == MOSTRA_TELA) || (mensagem->tipo == DADOS && tipo == DADOS)) {
+					if (tipo == MOSTRA_TELA) { 
+						fwrite(mensagem->dados, mensagem->tamanho, 1, stdout); //escreve os dados na tela
+					} else { 
+						fwrite(mensagem->dados, mensagem->tamanho, 1, arquivo); //escreve os dados no arquivo
+					}
+					mensagem = cria_mensagem(prox_enviar, ACK, ""); //cria um ACK
+					envia_mensagem(mensagem, soquete); //envia o ACK
+					//tratamento de sequencias -----------------------------------------------------------
+                    if (prox_enviar < MAX_SEQ) {
+                        prox_enviar++;
+                    } else {
+                        prox_enviar = 0x00; //se passar do limite zeramos o contador
+                    }
+
+                    if (prox_receber < MAX_SEQ) {
+                        prox_receber++;
+                    } else {
+                        prox_receber = 0x00; //se passar do limite zeramos o contador
+                    }
+                    // -------------------------------------------------------------------------------
+
+				} else if (mensagem->tipo == FIM_TX) {
+					mensagem = cria_mensagem(prox_enviar, ACK, "");
+					envia_mensagem(mensagem, soquete);
+                    fim = 1;
+				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
+					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
+					//tratamento de sequencia --------------------------------------------------------
+                    if (prox_receber < MAX_SEQ) {
+                        prox_receber++;
+                    } else {
+                        prox_receber = 0x00; //se passar do limite zeramos o contador
+                    }
+                    // -------------------------------------------------------------------------------
+				} else if (mensagem->tipo == ERRO) {
+					mensagem = cria_mensagem(prox_enviar, ACK, "");
+					envia_mensagem(mensagem, soquete);
+					fim = 1;
+					printf("Erro: ");
+                    for(int i = 0; i<mensagem->tamanho; i++){
+                        printf("%c", mensagem->dados[i]);
+                    }
+                    printf("\n");
+				}
+			} else if (mensagem->sequencia != prox_receber) {
+				printf("Erro: %s\n", G);
+                fim = 1; 
+			}
+		} else if (resultado_espera_mensagem == 2) { //TODO: NUNCA RETORNA TIMEOUT
+			printf("Timeout!!\n");
+            printf("Por favor, digite o comando novamente!!\n");
+            fim = 1; 
+		} else if (resultado_espera_mensagem == 1) {
+			mensagem = cria_mensagem(prox_enviar, NACK, "");
+			envia_mensagem(mensagem, soquete);
+            //tratamento de sequencias -----------------------------------------------------------
+            if (prox_enviar < MAX_SEQ) {
+                prox_enviar++;
+            } else {
+                prox_enviar = 0x00; //se passar do limite zeramos o contador
+            }
+
+            if (prox_receber < MAX_SEQ) {
+                prox_receber++;
+            } else {
+                prox_receber = 0x00; //se passar do limite zeramos o contador
+            }
+            // -------------------------------------------------------------------------------
+
+		}
+	} while (!fim);
+
+	if (tipo == DADOS) {
+		fclose(arquivo);
+	}
+}
+
 void ls_remoto(TipoComando* tipoComando, int soquete) {
 
-	Mensagem *mensagem = cria_mensagem_cliente(0x00, tipoComando, LS); //cria mensagem do tipo lsr
-	envia_mensagem_cliente(mensagem, soquete); //envia mensagem do lsr
-    puts("Mensagem enviada!!");
-    recebe_resposta_ls(mensagem, soquete);
-    free(mensagem);
-	//recebe_arquivo(mensagem);
+	Mensagem *mensagem = cria_mensagem(0x00, LS, tipoComando->argumento); //cria mensagem do tipo lsr
+	envia_mensagem(mensagem, soquete); //envia mensagem do lsr
+    // recebe_resposta_ls(mensagem, soquete);
+	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x00, 0x00, soquete);
+}
+
+void ls_local(TipoComando* tipoComando) {
+	if (!strcmp(tipoComando->argumento, "")) {
+		system("ls");
+	} else if (!strcmp(tipoComando->argumento, "-l")) {
+		system("ls -l");
+	} else if (!strcmp(tipoComando->argumento, "-a")) {
+		system("ls -a");
+	}
 }
 
 void comandos(int soquete){
@@ -120,9 +198,9 @@ void comandos(int soquete){
              case 0: //LS Remoto 
                 ls_remoto(tipoComando, soquete);
                 break;
-        //     case 1: //LS Local
-        //         comando_ls_local(comando);
-        //         break;
+            case 1: //LS Local
+                ls_local(tipoComando);
+                break;
         //     case 2: //CD Remoto
         //         comando_cd_remoto(comando->argumento);
         //         break;

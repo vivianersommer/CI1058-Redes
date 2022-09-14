@@ -7,9 +7,7 @@
 
 int main(int argc, char *argv[]) {
 
-    struct timeval timeout; //acho que da pra usar a timeeval pra fazer o timeout
     char *tipo = malloc(sizeof(char) * 10);
-    int value = 0;
 
     printf("-------------- Bem vindo ao Trabalho 1 de Redes 1 --------------\n");  
 
@@ -20,14 +18,12 @@ int main(int argc, char *argv[]) {
     }
 
     tipo = argv[1];
-
-    value = strcmp(tipo,"servidor");
-    if (value == 0){
+    if (!strcmp(tipo,"servidor")){
+        printf("---------------------- Rodando o Servidor ----------------------\n");
         servidor();
     } else {
-        value = strcmp(tipo,"cliente");
-
-        if (value == 0){
+        if (!strcmp(tipo,"cliente")){
+            printf("---------------------- Rodando o Cliente -----------------------\n");
             cliente();
         } else {
             printf("O segundo argumento não está certo, por favor rode do seguinte modo: \n");
@@ -36,6 +32,5 @@ int main(int argc, char *argv[]) {
         }
     }
 
-   
-
+    return 1;
 }

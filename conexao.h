@@ -1,7 +1,7 @@
 #ifndef __CONEXAO__
 #define __CONEXAO__
 
-#define MAX_DADOS 62 // (2^6-1)
+#define MAX_DADOS 63 // (2^6-1)
 #define MAX_SEQ 15
 #define MAX_TENTATIVAS 10
 
@@ -27,6 +27,7 @@
 #define D "Arquivo ja existe"
 #define E "Sem espaço"
 #define F "Erro na paridade"
+#define G "Erro na sequência"
 
 typedef struct Mensagem{
 	unsigned char marcadorInicio;
@@ -41,5 +42,8 @@ int habilitar_rede();
 void desabilitar_rede();
 int ConexaoRawSocket(char *device);
 unsigned char paridade(unsigned char* dados, unsigned char tamanho);
+Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados);
+void envia_mensagem(Mensagem *mensagem, int soquete);
+int espera_mensagem(Mensagem *mensagem, int soquete);
 
 #endif

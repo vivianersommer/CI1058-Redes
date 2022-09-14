@@ -32,26 +32,6 @@ char *le_arquivo(char *nome){
 	return arquivo;
 }
 
-Mensagem *cria_mensagem_servidor(unsigned char sequencia, unsigned char tipo, char *dados) {
-	
-    Mensagem *mensagem = malloc(sizeof(Mensagem));
-	mensagem->marcadorInicio = 0x7E; //01111110
-	mensagem->tamanho = strlen(dados);
-	mensagem->sequencia = sequencia;
-	mensagem->tipo = tipo;
-	mensagem->paridade = paridade(dados, mensagem->tamanho);
-
-	for (int i = 0; i < MAX_DADOS; i++) {
-		mensagem->dados[i] = dados[i];
-	}
-
-	return mensagem;
-}
-
-void envia_mensagem_servidor(Mensagem *mensagem, int soquete) {
-    int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-}
-
 int processo_poll(Mensagem *mensagem, int soquete) {
 	int tenta_enviar = 0, fim = 0, poll_resultado = 0, deu_tuco = 0;
 	unsigned char resultado_paridade , *buffer = malloc(sizeof(char) * 21);
@@ -67,7 +47,7 @@ int processo_poll(Mensagem *mensagem, int soquete) {
 			case 0:
 				puts("OI GATA");
 				tenta_enviar++;
-				envia_mensagem_servidor(mensagem, soquete); //tenta enviar
+				envia_mensagem(mensagem, soquete); //tenta enviar
 				if (tenta_enviar >= 2) {
 					deu_tuco = -1;
 					fim = 1; //c h e g a, deu timeout
@@ -130,10 +110,12 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 	// -----------------------------------------------------------------------------------
 
 	// tratamento de mensagem ------------------------------------------------------------
-	Mensagem *mensagem = cria_mensagem_servidor(prox_enviar, tipo, buffer);
-	envia_mensagem_servidor(mensagem, soquete);
+	Mensagem *mensagem = cria_mensagem(prox_enviar, tipo, buffer);
+	envia_mensagem(mensagem, soquete);
 	// -----------------------------------------------------------------------------------
     
+	puts("ATÉ AQUI, OK!");
+	
     // tratamento da sequencia -----------------------------------------------------------
 	if (prox_enviar < MAX_SEQ) {
 		prox_enviar++;
@@ -161,8 +143,8 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 					}
 					buffer[j] = '\0';
 
-					cria_mensagem_servidor(prox_enviar, tipo, buffer); //cria mensagem do tipo EXIBE
-					envia_mensagem_servidor(mensagem, soquete); //envia
+					cria_mensagem(prox_enviar, tipo, buffer); //cria mensagem do tipo EXIBE
+					envia_mensagem(mensagem, soquete); //envia
 					//tratamento de sequencias -----------------------------------------------------------
 					if (prox_enviar < MAX_SEQ) {
 						prox_enviar++;
@@ -177,13 +159,13 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 					}
 					// -------------------------------------------------------------------------------
 				} else if (mensagem->tipo == ACK && enviouTudo && !enviouFim) { //se for ACK E enviou todo arquivo E não enviou fim de arquivo
-					cria_mensagem_servidor(prox_enviar, FIM_TX, ""); //cria mensagem sinalizando fim do arquivo FIM_TX
-					envia_mensagem_servidor(mensagem, soquete); //envia mensagem
+					cria_mensagem(prox_enviar, FIM_TX, ""); //cria mensagem sinalizando fim do arquivo FIM_TX
+					envia_mensagem(mensagem, soquete); //envia mensagem
 					fim = 1;
 				} else if (mensagem->tipo == ACK && enviouTudo && enviouFim) { //se for ACK E envitou todo arquivo E enviou fim de arquivo
 					fim = 1;
 				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
-					envia_mensagem_servidor(mensagem, soquete); //envia a mesma mensagem novamente
+					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
 					//tratamento de sequencias -----------------------------------------------------------
 					if (prox_enviar < MAX_SEQ) {
 						prox_enviar++;
@@ -205,8 +187,8 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 
         //NACK -----------------------------------------------------------------------------------
 		} else if (deu_tuco == 0) { //se rolou algum erro
-			cria_mensagem_servidor(prox_enviar, NACK, ""); // crio NHAQUE
-			envia_mensagem_servidor(mensagem, soquete); // manda famoso NHAQUE
+			cria_mensagem(prox_enviar, NACK, ""); // crio NHAQUE
+			envia_mensagem(mensagem, soquete); // manda famoso NHAQUE
 			
             //tratamento de sequencias -----------------------------------------------------------
             if (prox_enviar < MAX_SEQ) {
@@ -244,27 +226,6 @@ void comando_ls(Mensagem *mensagem, int soquete){
 
 	envia_arquivo(".comandoLS", MOSTRA_TELA, 0, 1, soquete); //envia o arquivo com a saída do ls
 	system("rm .comandoLS"); //remove o arquivo temporário
-}
-
-int espera_mensagem(Mensagem *mensagem, int soquete) {
-
-	recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
-
-    // checa o marcador de início e a paridade da mensagem recebida -------------------------------------------------------
-    if ((mensagem->marcadorInicio == 0x7E)) {
-        if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade){
-            mensagem = cria_mensagem_servidor(0x00, OK, "");
-            envia_mensagem_servidor(mensagem, soquete);
-            return 1; //mensagem recebida com paridade certa
-        } else {
-            mensagem = cria_mensagem_servidor(0x00, ERRO, F);
-            envia_mensagem_servidor(mensagem, soquete);
-            return 0; //erro na paridade
-        }
-	}
-    // --------------------------------------------------------------------------------------------------------------------
-	
-    return -1; //lixo da placa de rede
 }
 
 void roda_servidor(int soquete){
