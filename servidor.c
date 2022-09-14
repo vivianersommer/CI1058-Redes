@@ -234,56 +234,46 @@ void comando_ls(Mensagem *mensagem, int soquete){
     
 	if (!strcmp(mensagem->dados, "-a")) {
         printf("Executando comando: ls -a\n");
-		system("ls -a > .lsResult");
+		system("ls -a > .comandoLS");
 	} else if (!strcmp(mensagem->dados, "-l")) {
         printf("Executando comando: ls -l\n");
-		system("ls -l > .lsResult");
+		system("ls -l > .comandoLS");
 	} else {
         printf("Executando comando: ls\n");
-		system("ls > .lsResult");
+		system("ls > .comandoLS");
 	}
 
-	envia_arquivo(".lsResult", MOSTRA_TELA, 0, 1, soquete); //envia o arquivo com a saída do ls
-	system("rm .lsResult"); //remove o arquivo temporário
+	envia_arquivo(".comandoLS", MOSTRA_TELA, 0, 1, soquete); //envia o arquivo com a saída do ls
+	system("rm .comandoLS"); //remove o arquivo temporário
 }
 
-void espera_mensagem(Mensagem *mensagem, int soquete) {
-	unsigned char paridade = 0x00;
-	unsigned char buffer[21];
-	int i = 0;
+int espera_mensagem(Mensagem *mensagem, int soquete) {
 
-	recv(soquete, buffer, 21, 0);
+	recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
 
-	if (buffer[0] == 0x7E) {
-		//------- recupera a mensagem ------------
-		r->inicio = buffer[0];
-		r->tamanho = (buffer[1] << 4) >> 4;
-		r->sequencia = buffer[1] >> 4;
-		r->tipo = (buffer[2] << 4) >> 4;
-		r->paridade = buffer[2] >> 4;
-		i = 0;
-		for (; i < MAX_DADOS; i++) {
-			r->dados[i] = buffer[i + 3];
-		}
-		//------ fim recupera mensagem -----------
-		paridade = calcula_paridade(r);
-		if (paridade == r->paridade) {
-			*evento = mensagemRecebida;
-		} else {
-			*evento = error;
-		}
-	} else {
-		*evento = lixo;
+    // checa o marcador de início e a paridade da mensagem recebida -------------------------------------------------------
+    if ((mensagem->marcadorInicio == 0x7E)) {
+        if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade){
+            mensagem = cria_mensagem_servidor(0x00, OK, "");
+            envia_mensagem_servidor(mensagem, soquete);
+            return 1; //mensagem recebida com paridade certa
+        } else {
+            mensagem = cria_mensagem_servidor(0x00, ERRO, F);
+            envia_mensagem_servidor(mensagem, soquete);
+            return 0; //erro na paridade
+        }
 	}
+    // --------------------------------------------------------------------------------------------------------------------
+	
+    return -1; //lixo da placa de rede
 }
 
 void roda_servidor(int soquete){
     Mensagem *mensagem = malloc(sizeof(Mensagem));
 
     do {
-		processo_poll(mensagem, soquete);
-
-		if (mensagem->sequencia == 0) {
+        int resultado_espera_mensagem = espera_mensagem(mensagem, soquete);
+		if (mensagem->sequencia == 0x00 && resultado_espera_mensagem == 1) {
 			switch (mensagem->tipo) {
 				case LS: //ls
 					comando_ls(mensagem, soquete);

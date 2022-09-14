@@ -20,6 +20,14 @@
 #define DADOS 0x020
 #define PUT 0x0a
 
+//ERROS
+#define A "Diretorio nao existe"
+#define B "Sem permissão"
+#define C "Diretorio ja existe"
+#define D "Arquivo ja existe"
+#define E "Sem espaço"
+#define F "Erro na paridade"
+
 typedef struct Mensagem{
 	unsigned char marcadorInicio;
 	unsigned char tamanho : 6;
