@@ -88,6 +88,7 @@ void recebe_resposta_ls(Mensagem *mensagem, int soquete){
                     printf("%c", mensagem->dados[i]);
                 }
                 printf("\n");
+                printf("Por favor, digite o comando novamente!!\n");
                 break;
             }
         }

@@ -50,7 +50,6 @@ Mensagem *cria_mensagem_servidor(unsigned char sequencia, unsigned char tipo, ch
 
 void envia_mensagem_servidor(Mensagem *mensagem, int soquete) {
     int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-    printf("\nRESULTADO DO SEND, QUANTOS BYTES ELE ENVIOU: %i\n", result_enviar);
 }
 
 int processo_poll(Mensagem *mensagem, int soquete) {
