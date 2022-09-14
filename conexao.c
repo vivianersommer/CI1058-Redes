@@ -70,7 +70,7 @@ int ConexaoRawSocket(char *device)
 
 unsigned char paridade(unsigned char* dados, unsigned char tamanho){
 
-  unsigned char paridades;
+  unsigned char paridades = 0x00;
 
   for(int i=0; i < tamanho; i++){
     paridades = paridades ^ dados[i];

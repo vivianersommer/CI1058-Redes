@@ -2,7 +2,7 @@
 #define __CLIENTE__
 
 #include "conexao.h"
-#define MAX 100
+#define MAX 20
 
 typedef struct TipoComando{
 	int tipo; //tipo de comando passado LSR, LSL...
@@ -10,7 +10,7 @@ typedef struct TipoComando{
 	char* argumento; //argumento lido do terminal
 }TipoComando;
 
-TipoComando *leitura();
+void leitura(TipoComando *tipoComando);
 Mensagem* cria_mensagem_cliente(unsigned char sequencia, TipoComando* tipoComando, unsigned char tipo);
 void envia_mensagem_cliente(Mensagem *mensagem, int soquete);
 void ls_remoto(TipoComando* tipoComando, int soquete);

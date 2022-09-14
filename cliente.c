@@ -13,20 +13,11 @@
 #include "cliente.h"
 
 // leitura dos comandos a partir de um "falso" terminal
-TipoComando *leitura(){ 
+void leitura(TipoComando* tipoComando){ 
 
-    TipoComando* tipoComando = malloc(sizeof(TipoComando)); //criação de tipoComando
-    tipoComando->tipo = -1; //inicia em -1 (inválido)
-    tipoComando->argumento = malloc(sizeof(char) * MAX);
-    tipoComando->comando = malloc(sizeof(char) * MAX);
+    char *linha_terminal = malloc(sizeof(char) * MAX);
 
-    char* linha_terminal = malloc(sizeof(char) * MAX);
-    char * diretorio_atual = malloc(sizeof(char) * MAX);
-
-    diretorio_atual = getcwd(0, 0); //obtem diretorio atual
-    strcat(diretorio_atual, "$ ");
-    printf("%s", diretorio_atual);
-
+    printf("$ ");
     fflush(stdin); //limpa entrada padrao
 
     fgets(linha_terminal, (MAX * 2) + 1, stdin); //linha a ser lida do terminal, +1 pro espaco vazio
@@ -59,11 +50,8 @@ TipoComando *leitura(){
                 }
         }
 	}
-
-    free(diretorio_atual);
+    printf("sera que eh o free?\n");
     free(linha_terminal);
-
-    return tipoComando;
 }
 
 Mensagem* cria_mensagem_cliente(unsigned char sequencia, TipoComando* tipoComando, unsigned char tipo) {
@@ -84,27 +72,33 @@ Mensagem* cria_mensagem_cliente(unsigned char sequencia, TipoComando* tipoComand
 
 void envia_mensagem_cliente(Mensagem *mensagem, int soquete) {
 	int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-    printf("\nRESULTADO DO SEND, QUANTOS BYTES ELE ENVIOU: %i\n", result_enviar);
+    puts("ENVIANDOOO....");
 }
 
 void ls_remoto(TipoComando* tipoComando, int soquete) {
 
-	Mensagem *mensagem = cria_mensagem_cliente('0', tipoComando, LS); //cria mensagem do tipo lsr
+	Mensagem *mensagem = cria_mensagem_cliente(0x00, tipoComando, LS); //cria mensagem do tipo lsr
 	envia_mensagem_cliente(mensagem, soquete); //envia mensagem do lsr
+    
+    free(mensagem);
 	//recebe_arquivo(mensagem);
 }
 
 void comandos(int soquete){
 
 	int acaba = 0;
-	TipoComando* tipocomando = malloc(sizeof(TipoComando));
-
+    TipoComando* tipoComando = malloc(sizeof(TipoComando)); //criação de tipoComando
+    puts("LENDOOO");
+    tipoComando->tipo = -1; //inicia em -1 (inválido)
+    tipoComando->argumento = malloc(sizeof(char) * MAX);
+    puts("LENDOOO 2");
+    tipoComando->comando = malloc(sizeof(char) * MAX);
 	do {
-		tipocomando = leitura();
+		leitura(tipoComando);
 
-		 switch (tipocomando->tipo) {
+		 switch (tipoComando->tipo) {
              case 0: //LS Remoto 
-                ls_remoto(tipocomando, soquete);
+                ls_remoto(tipoComando, soquete);
                 break;
         //     case 1: //LS Local
         //         comando_ls_local(comando);
@@ -130,8 +124,9 @@ void comandos(int soquete){
             default:
                 break;
          }
-
 	} while (!acaba);    
+
+    free(tipoComando);
 }
 
 int cliente(){
@@ -139,6 +134,7 @@ int cliente(){
     int soquete = habilitar_rede();
     comandos(soquete);
     desabilitar_rede(soquete);
+    printf("ADEUS MUNDO CRUEL   \n");
     
     return 0;
 } 
