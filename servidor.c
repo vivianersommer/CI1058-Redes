@@ -56,21 +56,23 @@ void envia_mensagem_servidor(Mensagem *mensagem, int soquete) {
 int processo_poll(Mensagem *mensagem, int soquete) {
 	int tenta_enviar = 0, fim = 0, poll_resultado = 0, deu_tuco = 0;
 	unsigned char resultado_paridade , *buffer = malloc(sizeof(char) * 21);
-	struct pollfd *fds;
-	
+	struct pollfd *fds;	
 	do {
 		poll_resultado = poll(fds, 1, 1000); //espera por algum evento vindo da descricao do arquivo
+		//printf("poll_resultado = %d\n", poll_resultado);
 		switch (poll_resultado) {
 			case -1:
 				printf("Erro na função poll, socorro!!\n");
 				printf("Ocorreu um erro que não sabemos lidar, desculpa!!\n");
 				exit(-1);
 			case 0:
+				puts("OI GATA");
 				tenta_enviar++;
 				envia_mensagem_servidor(mensagem, soquete); //tenta enviar
-				if (tenta_enviar >= MAX_TENTATIVAS) {
+				if (tenta_enviar >= 2) {
 					deu_tuco = -1;
 					fim = 1; //c h e g a, deu timeout
+                    printf("ENTREI  \n");
 				}
 				break;
 			default:
@@ -103,7 +105,7 @@ int processo_poll(Mensagem *mensagem, int soquete) {
 				}
 				break;
 			}
-	} while (!fim);
+	} while (fim == 0);
 
     return deu_tuco;
 }
@@ -152,7 +154,8 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 		deu_tuco = processo_poll(mensagem, soquete); //espera uma resposta ---------------
 		if (deu_tuco == 1) { //se recebeu mensagem
 			if (mensagem->sequencia == prox_receber) { //se a sequência ta certa
-				if (mensagem->tipo == ACK && !enviouTudo) { //se for um ACK e ainda não enviou todo o arquivo, envia os próximos caracteres
+				printf("if da mensagem recebida\n");
+                if (mensagem->tipo == ACK && !enviouTudo) { //se for um ACK e ainda não enviou todo o arquivo, envia os próximos caracteres
 					j = 0;
 					while (j < MAX_DADOS && i < tamArquivo) {
 						buffer[j++] = arquivo[i++];
@@ -221,9 +224,10 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
             // -------------------------------------------------------------------------------
 		}
 		// ---------------------------------------------------------------------------------------
-
+        printf("NAO TERMINEI\n");
 	} while(!fim);
 	//sai do while quando enviar todo o arquivo (ou nao)
+    printf("TERMINEI\n");
 }
 
 void comando_ls(Mensagem *mensagem, int soquete){
