@@ -12,19 +12,6 @@
 #include "conexao.h"
 #include "cliente.h"
 
-int habilitar_rede(){
-
-    // system("ifconfig eth0 promisc");
-    int soquete = ConexaoRawSocket("lo"); // TODO: quando for para o cabo, usar eth0
-    return soquete;
-}
-
-void desabilitar_rede(int soquete){
-
-    close(soquete);
-	// system("ifconfig eth0 -promisc");
-}
-
 // leitura dos comandos a partir de um "falso" terminal
 TipoComando *leitura(){ 
 
@@ -79,13 +66,13 @@ TipoComando *leitura(){
     return tipoComando;
 }
 
-Mensagem* cria_mensagem(unsigned char sequencia, TipoComando* tipoComando) {
+Mensagem* cria_mensagem_cliente(unsigned char sequencia, TipoComando* tipoComando, unsigned char tipo) {
 
     Mensagem *mensagem = malloc(sizeof(Mensagem));
 	mensagem->marcadorInicio =  0x7E; // 0x7E = 01111110
 	mensagem->tamanho = strlen(tipoComando->argumento);
 	mensagem->sequencia = sequencia;
-	mensagem->tipo = tipoComando->tipo;
+	mensagem->tipo = tipo;
 	mensagem->paridade = paridade(tipoComando->argumento, mensagem->tamanho); 
 
 	for (int i = 0; i < MAX_DADOS; i++) {
@@ -95,15 +82,15 @@ Mensagem* cria_mensagem(unsigned char sequencia, TipoComando* tipoComando) {
     return mensagem;
 }
 
-void envia_mensagem(Mensagem *mensagem, int soquete) {
+void envia_mensagem_cliente(Mensagem *mensagem, int soquete) {
 	int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
     printf("\nRESULTADO DO SEND, QUANTOS BYTES ELE ENVIOU: %i\n", result_enviar);
 }
 
 void ls_remoto(TipoComando* tipoComando, int soquete) {
 
-	Mensagem *mensagem = cria_mensagem('0', tipoComando); //cria mensagem do tipo lsr
-	envia_mensagem(mensagem, soquete); //envia mensagem do lsr
+	Mensagem *mensagem = cria_mensagem_cliente('0', tipoComando, LS); //cria mensagem do tipo lsr
+	envia_mensagem_cliente(mensagem, soquete); //envia mensagem do lsr
 	//recebe_arquivo(mensagem);
 }
 

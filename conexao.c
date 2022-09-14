@@ -1,5 +1,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 #include <net/ethernet.h>
 #include <linux/if_packet.h>
@@ -9,6 +12,19 @@
 #include <stdio.h>
 #include <netinet/in.h>
 #include "cliente.h"
+
+int habilitar_rede(){
+
+    // system("ifconfig eth0 promisc");
+    int soquete = ConexaoRawSocket("lo"); // TODO: quando for para o cabo, usar eth0
+    return soquete;
+}
+
+void desabilitar_rede(int soquete){
+
+    close(soquete);
+	// system("ifconfig eth0 -promisc");
+}
 
 int ConexaoRawSocket(char *device)
 {
@@ -54,7 +70,6 @@ int ConexaoRawSocket(char *device)
 
 unsigned char paridade(unsigned char* dados, unsigned char tamanho){
 
-  // TODO: ver se isso faz sentido depois k k k 
   unsigned char paridades;
 
   for(int i=0; i < tamanho; i++){
