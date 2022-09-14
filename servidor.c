@@ -247,6 +247,36 @@ void comando_ls(Mensagem *mensagem, int soquete){
 	system("rm .lsResult"); //remove o arquivo temporário
 }
 
+void espera_mensagem(Mensagem *mensagem, int soquete) {
+	unsigned char paridade = 0x00;
+	unsigned char buffer[21];
+	int i = 0;
+
+	recv(soquete, buffer, 21, 0);
+
+	if (buffer[0] == 0x7E) {
+		//------- recupera a mensagem ------------
+		r->inicio = buffer[0];
+		r->tamanho = (buffer[1] << 4) >> 4;
+		r->sequencia = buffer[1] >> 4;
+		r->tipo = (buffer[2] << 4) >> 4;
+		r->paridade = buffer[2] >> 4;
+		i = 0;
+		for (; i < MAX_DADOS; i++) {
+			r->dados[i] = buffer[i + 3];
+		}
+		//------ fim recupera mensagem -----------
+		paridade = calcula_paridade(r);
+		if (paridade == r->paridade) {
+			*evento = mensagemRecebida;
+		} else {
+			*evento = error;
+		}
+	} else {
+		*evento = lixo;
+	}
+}
+
 void roda_servidor(int soquete){
     Mensagem *mensagem = malloc(sizeof(Mensagem));
 
