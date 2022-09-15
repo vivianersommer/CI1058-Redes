@@ -152,6 +152,47 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 	}
 }
 
+void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
+	unsigned char prox_receber = 0;
+	int fim = 0;
+
+	//cria_mensagem(&m, 0, CDR, argumento); //cria solicitação do cd
+	//envia_mensagem(&m); //envia a mensagem
+
+	do {
+		int deu tuco = espera_mensagem(mensagem, soquete);
+		if (deu_tuco == 1) {
+			if (mensagem->sequencia == prox_receber) {
+				if (mensagem->tipo == OK || mensagem->tipo == ERRO) {
+					fim = 1;
+					mensagem = cria_mensagem(mensagem, 1, ACK, "");
+					envia_mensagem(mensagem);
+				} else if (r.tipo == NACK) {
+					prox_receber = sequencia(prox_receber);
+					envia_mensagem(mensagem);
+				}
+			} else if (mensagem->sequencia > prox_receber) {
+                printf("-CD CAI NA CONDIÇÃO DE SEQUENCIA\n");
+				fim = 1; //sai do while
+				printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
+			}
+		} else if (evento == timeout) { //se o evento for um timeout
+			printf("-CD CAI NA CONDIÇÃO DE TIMEOUT\n");
+            fim = 1; //sai do while
+			printf("Timeout, comando não executado...\n");
+		}
+	} while (!fim);
+
+	if (mensagem->tipo == ERRO) {
+		printf("Erro ao executar comando: ");
+		exibe_erro(mensagem);
+		//fwrite(r.dados, r.tamanho, 1, stdout); //escreve os dados na tela
+		//printf("\n");
+	} else if (mensagem->tipo == ACK) {
+		printf("Comando executado com sucesso.\n");
+	}
+}
+
 void ls_remoto(TipoComando* tipoComando, int soquete) {
 
 	Mensagem *mensagem = cria_mensagem(0x00, LS, tipoComando->argumento); //cria mensagem do tipo lsr
@@ -168,6 +209,12 @@ void ls_local(TipoComando* tipoComando) {
 	} else {
         system("ls");
     }
+}
+
+void cd_remoto(TipoComando* tipoComando, int soquete){
+    Mensagem *mensagem = cria_mensagem(0x00, CD, tipoComando->argumento); //cria mensagem do tipo CD
+    envia_mensagem(mensagem, soquete); //envia mensagem da requisicao CD
+    recebe_resposta_cd(mensagem, soquete);
 }
 
 void cd_local(TipoComando* tipoComando){
@@ -202,9 +249,9 @@ void comandos(int soquete){
             case 1: //LS Local
                 ls_local(tipoComando);
                 break;
-        //     case 2: //CD Remoto
-        //         comando_cd_remoto(comando->argumento);
-        //         break;
+            case 2: //CD Remoto
+                 cd_remoto(comando->argumento);
+                 break;
             case 3: //CD Local
                 cd_local(tipoComando);
                 break;
