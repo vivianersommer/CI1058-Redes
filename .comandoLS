@@ -1,0 +1,17 @@
+.
+..
+cliente
+cliente.c
+cliente.h
+.comandoLS
+conexao.c
+conexao.h
+.git
+.gitignore
+main
+main.c
+makefile
+README.md
+servidor
+servidor.c
+servidor.h

@@ -99,7 +99,7 @@ Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados
 
 void envia_mensagem(Mensagem *mensagem, int soquete) {
     int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-    // puts("Enviando...");
+    puts("Enviando...");
     
 }
 

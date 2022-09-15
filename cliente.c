@@ -160,16 +160,16 @@ void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 	//envia_mensagem(&m); //envia a mensagem
 
 	do {
-		int deu tuco = espera_mensagem(mensagem, soquete);
+		int deu_tuco = espera_mensagem(mensagem, soquete);
 		if (deu_tuco == 1) {
 			if (mensagem->sequencia == prox_receber) {
 				if (mensagem->tipo == OK || mensagem->tipo == ERRO) {
 					fim = 1;
-					mensagem = cria_mensagem(mensagem, 1, ACK, "");
-					envia_mensagem(mensagem);
+					mensagem = cria_mensagem(1, ACK, "");
+					envia_mensagem(mensagem, soquete);
 				} else if (mensagem->tipo == NACK) {
 					prox_receber = sequencia(prox_receber);
-					envia_mensagem(mensagem);
+					envia_mensagem(mensagem, soquete);
 				}
 			} else if (mensagem->sequencia > prox_receber) {
                 printf("-CD CAI NA CONDIÇÃO DE SEQUENCIA\n");
@@ -185,7 +185,7 @@ void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 
 	if (mensagem->tipo == ERRO) {
 		printf("Erro ao executar comando: ");
-		exibe_erro(mensagem);
+		//exibe_erro(mensagem);
 		//fwrite(r.dados, r.tamanho, 1, stdout); //escreve os dados na tela
 		//printf("\n");
 	} else if (mensagem->tipo == ACK) {
@@ -250,7 +250,7 @@ void comandos(int soquete){
                 ls_local(tipoComando);
                 break;
             case 2: //CD Remoto
-                 cd_remoto(comando->argumento);
+                 cd_remoto(tipoComando, soquete);
                  break;
             case 3: //CD Local
                 cd_local(tipoComando);

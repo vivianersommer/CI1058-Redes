@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include "conexao.h"
 #include "servidor.h"
@@ -157,21 +158,22 @@ void comando_cd(Mensagem* mensagem, int soquete){
 	for(i = 0; i < mensagem->tamanho; i++) {
 		buffer[i] = mensagem->dados[i];
 	}
-	buffer[i] = '\0';
+	//buffer[i] = '\0';
 
 	diretorio = opendir(buffer); //abre diretorio
 	
 	struct stat st;
 	stat(buffer, &st); //que?
 
+	//int permissao;
 	//permissao = (st.st_mode & S_IROTH);
 
 	//cagando para permissao
 	if (/*permissao &&*/ diretorio) {
-		mensagem = cria_mensagem(mensagem, 0, OK, ""); //se recebi o diretorio crio um OK
-		chdir(buffer); //que?
+		mensagem = cria_mensagem(0, OK, ""); //se recebi o diretorio crio um OK
+		chdir(buffer);
 
-		//printf("cd %s\n", argumento);
+		printf("Executando: cd %s\n", buffer);
 	/*} else if (!permissao) {
 		erro[0] = ERRO_PER;
 		erro[1] = '\0';
@@ -180,7 +182,7 @@ void comando_cd(Mensagem* mensagem, int soquete){
 	} else /*if (errno == ENOENT)*/ {
 		//erro[0] = ERRO_DIR;
 		//erro[1] = '\0';
-		mensagem = cria_mensagem(mensagem, 0, ERRO, 'deu erro no arquivo'); //se nao crio um erro
+		mensagem = cria_mensagem(0, ERRO, ""); //se nao crio um erro
 		printf("Diretório '%s' não existe\n", buffer);
 	}
 
@@ -190,7 +192,7 @@ void comando_cd(Mensagem* mensagem, int soquete){
 		int deu_tuco = espera_mensagem(mensagem, soquete);
 		if (deu_tuco == 1) {
 			if (mensagem->sequencia == prox_receber) {
-				if (mensagem=>tipo == ACK) {
+				if (mensagem->tipo == ACK) {
 					fim = 1;
 					printf("\n-CD, ENTREI NA CONDIÇÃO DE ACK\n");
 				} else if (mensagem->tipo == NACK) {
@@ -199,12 +201,12 @@ void comando_cd(Mensagem* mensagem, int soquete){
 					envia_mensagem(mensagem, soquete);
 				}
 			} else if (mensagem->sequencia > prox_receber) {
-				printf("\n-CD, ENTREI NA CONDIÇÃO DE SEQUENCIA\n")
+				printf("\n-CD, ENTREI NA CONDIÇÃO DE SEQUENCIA\n");
 				fim = 1; //sai do while
 				//printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
 			}
 		} else if (deu_tuco == 0) { //se o evento for um timeout
-		printf("\n-CD, ENTREI NA CONDIÇÃO DE timeout\n")
+		printf("\n-CD, ENTREI NA CONDIÇÃO DE timeout\n");
 			fim = 1; //sai do while
 			printf("Timeout, comando não executado...\n");
 		}
@@ -238,7 +240,6 @@ void comando_ls(Mensagem *mensagem, int soquete){
 
 void roda_servidor(int soquete){
     Mensagem *mensagem = malloc(sizeof(Mensagem));
-
     do {
         int resultado_espera_mensagem = espera_mensagem(mensagem, soquete);
 		if (mensagem->sequencia == 0x00 && resultado_espera_mensagem == 1) {
@@ -246,9 +247,9 @@ void roda_servidor(int soquete){
 				case LS: //ls
 					comando_ls(mensagem, soquete);
 					break;
-				// case 2: //cd
-				// 	comando_cd(mensagem);
-				// 	break;
+				 case CD: //cd
+				 	comando_cd(mensagem, soquete);
+				 	break;
 				// case 4: //get
 				// 	comando_get(mensagem);
 				// 	break;
