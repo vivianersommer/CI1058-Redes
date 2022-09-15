@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <net/ethernet.h>
 #include <linux/if_packet.h>
 #include <linux/if.h>
@@ -13,12 +14,15 @@
 #include "cliente.h"
 
 // leitura dos comandos a partir de um "falso" terminal
-void leitura(TipoComando* tipoComando){ 
+void leitura(TipoComando* tipoComando){
 
     char *linha_terminal = malloc(sizeof(char) * MAX);
 
-    printf("$ ");
-    fflush(stdin); //limpa entrada padrao
+    char *diretorio_atual = getcwd(0, 0);
+	strcat(diretorio_atual, "$ ");
+	printf("%s", diretorio_atual);
+    fflush(stdin);
+    fflush(stdout); //limpa entrada padrao
 
     fgets(linha_terminal, MAX, stdin); //linha a ser lida do terminal
     sscanf(linha_terminal, "%s %s", tipoComando->comando, tipoComando->argumento);
@@ -45,6 +49,7 @@ void leitura(TipoComando* tipoComando){
             } else if (strcmp(tipoComando->comando, "mkdirl") == 0){
                 tipoComando->tipo = 7; //mkdir local
             } else{
+                tipoComando->tipo = -1;
                 puts("Comando inválido!!");
                 puts("Tente novamente!!");
             }
@@ -165,6 +170,22 @@ void ls_local(TipoComando* tipoComando) {
     }
 }
 
+void cd_local(TipoComando* tipoComando){
+    chdir(tipoComando->argumento);
+}
+
+void mkdir_local(TipoComando* tipoComando){
+    struct stat st = {0};
+
+    if (stat(tipoComando->argumento, &st) == -1) {
+        mkdir(tipoComando->argumento, 0700);
+    } else {
+        printf("Erro: esse diretório já existe!!\n");
+        fflush(stdin);
+        fflush(stdout);
+    }
+}
+
 void comandos(int soquete){
 
 	int acaba = 0;
@@ -174,9 +195,8 @@ void comandos(int soquete){
     tipoComando->comando = malloc(sizeof(char) * MAX);
 	do {
 		leitura(tipoComando);
-
-		 switch (tipoComando->tipo) {
-             case 0: //LS Remoto 
+		switch (tipoComando->tipo) {
+            case 0: //LS Remoto 
                 ls_remoto(tipoComando, soquete);
                 break;
             case 1: //LS Local
@@ -185,9 +205,9 @@ void comandos(int soquete){
         //     case 2: //CD Remoto
         //         comando_cd_remoto(comando->argumento);
         //         break;
-        //     case 3: //CD Local
-        //         comando_cd_local(comando->argumento);
-        //         break;
+            case 3: //CD Local
+                cd_local(tipoComando);
+                break;
         //     case 4: //GET
         //         comando_get(comando->argumento);
         //         break;
@@ -197,9 +217,9 @@ void comandos(int soquete){
         //     case 6: //MKDIR Remoto
         //         comando_cat(comando->argumento);
         //         break;
-        //     case 7: //MKDIR Local
-        //         comando_cat(comando->argumento);
-        //         break;
+            case 7: //MKDIR Local
+                mkdir_local(tipoComando);
+                break;
             default:
                 break;
          }
