@@ -20,7 +20,7 @@ void leitura(TipoComando* tipoComando){
     printf("$ ");
     fflush(stdin); //limpa entrada padrao
 
-    fgets(linha_terminal, MAX, stdin); //linha a ser lida do terminal, +1 pro espaco vazio
+    fgets(linha_terminal, MAX, stdin); //linha a ser lida do terminal
     sscanf(linha_terminal, "%s %s", tipoComando->comando, tipoComando->argumento);
 
 	if (strlen(tipoComando->comando) > 0) {
@@ -28,40 +28,38 @@ void leitura(TipoComando* tipoComando){
 			printf("Por favor, o tamanho do comando e seu argumento devem ter no máximo tamanho %d!!\n" , MAX);
             puts("Tente novamente!!");
 		} else {
-                if (strcmp(tipoComando->comando, "lsr") == 0){
-                    tipoComando->tipo = 0; //ls remoto
-                } else if (strcmp(tipoComando->comando, "lsl") == 0) {
-                    tipoComando->tipo = 1; //ls local
-                } else if (strcmp(tipoComando->comando, "cdr") == 0) {
-                    tipoComando->tipo = 2; //cd remoto
-                } else if (strcmp(tipoComando->comando, "cdl") == 0) {
-                    tipoComando->tipo = 3; //cd local
-                } else if (strcmp(tipoComando->comando, "get") == 0) {
-                    tipoComando->tipo = 4; //get
-                } else if (strcmp(tipoComando->comando, "put") == 0) {
-                    tipoComando->tipo = 5; //put
-                } else if (strcmp(tipoComando->comando, "mkdirr") == 0){
-                    tipoComando->tipo = 6; //mkdir remoto
-                } else if (strcmp(tipoComando->comando, "mkdirl") == 0){
-                    tipoComando->tipo = 7; //mkdir local
-                } else{
-                    puts("Comando inválido!!");
-                    puts("Tente novamente!!");
-                }
+            if (strcmp(tipoComando->comando, "lsr") == 0){
+                tipoComando->tipo = 0; //ls remoto
+            } else if (strcmp(tipoComando->comando, "lsl") == 0) {
+                tipoComando->tipo = 1; //ls local
+            } else if (strcmp(tipoComando->comando, "cdr") == 0) {
+                tipoComando->tipo = 2; //cd remoto
+            } else if (strcmp(tipoComando->comando, "cdl") == 0) {
+                tipoComando->tipo = 3; //cd local
+            } else if (strcmp(tipoComando->comando, "get") == 0) {
+                tipoComando->tipo = 4; //get
+            } else if (strcmp(tipoComando->comando, "put") == 0) {
+                tipoComando->tipo = 5; //put
+            } else if (strcmp(tipoComando->comando, "mkdirr") == 0){
+                tipoComando->tipo = 6; //mkdir remoto
+            } else if (strcmp(tipoComando->comando, "mkdirl") == 0){
+                tipoComando->tipo = 7; //mkdir local
+            } else{
+                puts("Comando inválido!!");
+                puts("Tente novamente!!");
+            }
         }
 	}
     free(linha_terminal);
 }
 
 void recebe_resposta_ls(Mensagem *mensagem, int soquete){
-int count = 0;
     do {
         recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
         if ((mensagem->marcadorInicio == 0x7E) && (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade)) {
-            count++;
-            if(mensagem->tipo == OK){
+            if (mensagem->tipo == OK) { //se servidor devolveu um OK, está tudo certo
                 break;
-            } else if (mensagem->tipo == ERRO){
+            } else if (mensagem->tipo == ERRO){ // se servidor devolveu um ERRO, pede pro usuário redigitar o comando
                 printf("Erro: ");
                 for(int i = 0; i<mensagem->tamanho; i++){
                     printf("%c", mensagem->dados[i]);
@@ -72,7 +70,6 @@ int count = 0;
             }
         }
     }while(1);
-
 }
 
 void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned char prox_enviar, unsigned char prox_receber, int soquete) {
@@ -92,16 +89,10 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 				if ((mensagem->tipo == MOSTRA_TELA && tipo == MOSTRA_TELA) || (mensagem->tipo == DADOS && tipo == DADOS)) {
 					if (tipo == MOSTRA_TELA) { 
 						fwrite(mensagem->dados, mensagem->tamanho, 1, stdout); //escreve os dados na tela
-                        //printf("\n");
 					} else { 
 						fwrite(mensagem->dados, mensagem->tamanho, 1, arquivo); //escreve os dados no arquivo
-                        //printf("\n");
 					}
 					mensagem = cria_mensagem(prox_enviar, ACK, ""); //cria um ACK
-                    // printf("mensagem->sequencia %hhu\n", mensagem->sequencia);
-                    // printf("prox_enviar:     %hhu\n", prox_enviar);
-                    // printf("prox_receber:     %hhu\n", prox_receber);
-					// printf("tipo: %hhu\n", mensagem->tipo);
                     envia_mensagem(mensagem, soquete); //envia o ACK
 					
                     //tratamento de sequencias após envio-----------------------------------------------------------
@@ -110,7 +101,6 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
                     // -------------------------------------------------------------------------------
 
 				} else if (mensagem->tipo == FIM_TX) {
-                    printf("entrei no caso de fim\n");
 					mensagem = cria_mensagem(prox_enviar, ACK, "");
 					envia_mensagem(mensagem, soquete);
                     fim = 1;
@@ -129,11 +119,7 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 					mensagem = cria_mensagem(prox_enviar, ACK, "");
 					envia_mensagem(mensagem, soquete);
 					fim = 1;
-					printf("Erro: ");
-                    /*for(int i = 0; i<mensagem->tamanho; i++){
-                        printf("%c", mensagem->dados[i]);
-                    }
-                    printf("\n");*/
+					printf("Erro: %s\n", mensagem->dados);
 				}
 			} else if (mensagem->sequencia != prox_receber) {
                 fim = 0;
@@ -170,13 +156,13 @@ void ls_remoto(TipoComando* tipoComando, int soquete) {
 }
 
 void ls_local(TipoComando* tipoComando) {
-	if (!strcmp(tipoComando->argumento, "")) {
-		system("ls");
-	} else if (!strcmp(tipoComando->argumento, "-l")) {
+    if (!strcmp(tipoComando->argumento, "-l")) {
 		system("ls -l");
 	} else if (!strcmp(tipoComando->argumento, "-a")) {
 		system("ls -a");
-	}
+	} else {
+        system("ls");
+    }
 }
 
 void comandos(int soquete){

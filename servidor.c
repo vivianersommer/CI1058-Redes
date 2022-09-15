@@ -23,7 +23,7 @@ char *le_arquivo(char *nome){
 	long long tamanho = ftell(file);
 	rewind(file);
 
-	arquivo = malloc(tamanho * sizeof(char)); //mexiaki
+	arquivo = malloc(tamanho * sizeof(char));
 
 	fread(arquivo, 1, tamanho, file);
 	fclose(file);
@@ -39,21 +39,19 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 
 	// pega arquivo gerado no LS ---------------------------------------------------------
 	char *arquivo; 
-	arquivo = le_arquivo(nome); //ok aqui, esta retornando certo
+	arquivo = le_arquivo(nome);
 	tamArquivo = strlen(arquivo);
 	// -----------------------------------------------------------------------------------
 
 	// copia os 62 primeiros caracteres do arquivo para a variável -----------------------
 	char *buffer = malloc(MAX_DADOS * sizeof(char));
 	
-	int w;
-	for (w = 0; w < MAX_DADOS && w < tamArquivo; w++) { 
-		buffer[w] = arquivo[w];
+	for (i = 0; i < MAX_DADOS && i < tamArquivo; i++) { 
+		buffer[i] = arquivo[i];
 	}
 
-	i=w;
-	j=w;
-	buffer[w] = '\0';
+	j=i;
+	buffer[i] = '\0';
 	// -----------------------------------------------------------------------------------
 
 	// tratamento de mensagem ------------------------------------------------------------
@@ -65,7 +63,6 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 	prox_enviar = sequencia(prox_enviar);
     // -----------------------------------------------------------------------------------
 
-	printf("SERVIDOR: prox_enviar = %hhu e prox_receber %hhu\n", prox_enviar, prox_receber);
 	do {
 		// verifica se mandou todo o arquivo ---------------------------------------------
 		if (i < tamArquivo) {
@@ -77,29 +74,19 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 
 		deu_tuco = processo_poll(mensagem, soquete); //espera uma resposta ---------------
 
-		printf("Recebi uma mensagem do tipo %hhu\n", mensagem->tipo);
-		if (deu_tuco == 1) { //se recebeu mensagem
+		if (deu_tuco == 1) { 
 			if (mensagem->sequencia == prox_receber) { //se a sequência ta certa
-                if (mensagem->tipo == ACK && !enviouTudo) { //se for um ACK e ainda não enviou todo o arquivo, envia os próximos caracteres
-					
-					printf("Sequencia da mensagem:%hhu  Sequencia do prox_receber:%hhu \n\n", mensagem->sequencia, prox_receber);
 
+				//se for um ACK e ainda não enviou todo o arquivo, envia os próximos caracteres
+                if (mensagem->tipo == ACK && !enviouTudo) { 
 					j = 0;
 					while (j < MAX_DADOS && i < tamArquivo) {
 						buffer[j++] = arquivo[i++];
 					}
 					buffer[j] = '\0';
 
-					mensagem = cria_mensagem(prox_enviar, tipo, buffer); //cria mensagem do tipo EXIBE //AKI NGM TAVA RECEBENDO O QUE TAVA VOLTANDO
-					printf("-SERVIDOR\nDADOS RESTANTES:\n");
-					for(int i=0; i<mensagem->tamanho; i++){
-						printf("%c", mensagem->dados[i]);
-					}
-					printf("\n");
-					printf("prox_enviar = %d\n", prox_enviar);
-					printf("prox_receber = %d\n", prox_receber);
-
-					envia_mensagem(mensagem, soquete); //envia
+					mensagem = cria_mensagem(prox_enviar, tipo, buffer); 
+					envia_mensagem(mensagem, soquete); //envia o que sobrou
 
 					//tratamento de sequencias após envio-----------------------------------------------------------
 					prox_enviar = sequencia(prox_enviar);
@@ -108,12 +95,17 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 
 				} else if (mensagem->tipo == ACK && (enviouTudo == 1) && !enviouFim) { //se for ACK E enviou todo arquivo E não enviou fim de arquivo
 					printf("entrei no caso de fim\n");
-					cria_mensagem(prox_enviar, FIM_TX, ""); //cria mensagem sinalizando fim do arquivo FIM_TX
+
+					mensagem = cria_mensagem(prox_enviar, FIM_TX, ""); //cria mensagem sinalizando fim do arquivo FIM_TX
 					envia_mensagem(mensagem, soquete); //envia mensagem
-					fim = 1;
+				
+					fim = 1; //sai do while
+				
 				} else if (mensagem->tipo == ACK && enviouTudo && enviouFim) { //se for ACK E envitou todo arquivo E enviou fim de arquivo
 					printf("entrei no caso de ack\n");
-					fim = 1;
+				
+					fim = 1; //sai do while
+				
 				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
 					printf("entrei no caso de nack\n");
 					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
@@ -121,12 +113,12 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 					//tratamento de sequencias após envio-----------------------------------------------------------
 					prox_enviar = sequencia(prox_enviar);
 					// -------------------------------------------------------------------------------
-				} else {
-					printf("Cai no tipo %hhu, ignorando ...\n", mensagem->tipo);
-				}
+				} 
+				
 			} else if (mensagem->sequencia > prox_receber) { //se a sequência for maior do que a esperada
-				fim = 1; //sai do while
 				printf("Mensagem com sequência maior do que a esperada, encerrando a transmissão...\n seq: %d e esperava: %d\n", mensagem->sequencia, prox_receber);
+				
+				fim = 1; //sai do while
 			}
 
 		// ERRO ----------------------------------------------------------------------------------
@@ -148,14 +140,13 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
             // -------------------------------------------------------------------------------
 		}
 		// ---------------------------------------------------------------------------------------
-        printf("NAO TERMINEI\n");
-	} while(!fim);
-	//sai do while quando enviar todo o arquivo (ou nao)
-    printf("TERMINEI\n");
+        // printf("NAO TERMINEI\n");
+	} while(!fim); //sai do while quando enviar todo o arquivo ou quando der algum erro sinistro
 }
 
 void comando_ls(Mensagem *mensagem, int soquete){
     
+	//tipos de ls
 	if (!strcmp(mensagem->dados, "-a")) {
         printf("Executando comando: ls -a\n");
 		system("ls -a > .comandoLS");
@@ -168,7 +159,7 @@ void comando_ls(Mensagem *mensagem, int soquete){
 	}
 
 	envia_arquivo(".comandoLS", MOSTRA_TELA, 0x00, 0x01, soquete); //envia o arquivo com a saída do ls
-	system("rm .comandoLS"); //remove o arquivo temporário
+	// system("rm .comandoLS"); //remove o arquivo temporário
 }
 
 void roda_servidor(int soquete){
