@@ -167,7 +167,7 @@ void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 					fim = 1;
 					mensagem = cria_mensagem(mensagem, 1, ACK, "");
 					envia_mensagem(mensagem);
-				} else if (r.tipo == NACK) {
+				} else if (mensagem->tipo == NACK) {
 					prox_receber = sequencia(prox_receber);
 					envia_mensagem(mensagem);
 				}
@@ -176,7 +176,7 @@ void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 				fim = 1; //sai do while
 				printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
 			}
-		} else if (evento == timeout) { //se o evento for um timeout
+		} else if (deu_tuco == 0) { //se o evento for um timeout
 			printf("-CD CAI NA CONDIÇÃO DE TIMEOUT\n");
             fim = 1; //sai do while
 			printf("Timeout, comando não executado...\n");
