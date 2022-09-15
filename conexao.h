@@ -45,5 +45,7 @@ unsigned char paridade(unsigned char* dados, unsigned char tamanho);
 Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados);
 void envia_mensagem(Mensagem *mensagem, int soquete);
 int espera_mensagem(Mensagem *mensagem, int soquete);
+int processo_poll(Mensagem *mensagem, int soquete);
+unsigned char sequencia(unsigned char seq);
 
 #endif

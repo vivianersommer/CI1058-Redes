@@ -54,10 +54,11 @@ void leitura(TipoComando* tipoComando){
 }
 
 void recebe_resposta_ls(Mensagem *mensagem, int soquete){
-
+int count = 0;
     do {
         recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
         if ((mensagem->marcadorInicio == 0x7E) && (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade)) {
+            count++;
             if(mensagem->tipo == OK){
                 break;
             } else if (mensagem->tipo == ERRO){
@@ -85,36 +86,36 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 	}
 
 	do {
-		int resultado_espera_mensagem = espera_mensagem(mensagem, soquete); //espera uma resposta
-		if (mensagem->sequencia == 0x00 && resultado_espera_mensagem == 1) {
+		int deu_tuco = espera_mensagem(mensagem, soquete); //espera uma resposta
+		if (deu_tuco == 1) {
 			if (mensagem->sequencia == prox_receber) { //se a sequência for a esperada
 				if ((mensagem->tipo == MOSTRA_TELA && tipo == MOSTRA_TELA) || (mensagem->tipo == DADOS && tipo == DADOS)) {
 					if (tipo == MOSTRA_TELA) { 
 						fwrite(mensagem->dados, mensagem->tamanho, 1, stdout); //escreve os dados na tela
+                        //printf("\n");
 					} else { 
 						fwrite(mensagem->dados, mensagem->tamanho, 1, arquivo); //escreve os dados no arquivo
+                        //printf("\n");
 					}
 					mensagem = cria_mensagem(prox_enviar, ACK, ""); //cria um ACK
-					envia_mensagem(mensagem, soquete); //envia o ACK
-					//tratamento de sequencias -----------------------------------------------------------
-                    if (prox_enviar < MAX_SEQ) {
-                        prox_enviar++;
-                    } else {
-                        prox_enviar = 0x00; //se passar do limite zeramos o contador
-                    }
-
-                    if (prox_receber < MAX_SEQ) {
-                        prox_receber++;
-                    } else {
-                        prox_receber = 0x00; //se passar do limite zeramos o contador
-                    }
+                    // printf("mensagem->sequencia %hhu\n", mensagem->sequencia);
+                    // printf("prox_enviar:     %hhu\n", prox_enviar);
+                    // printf("prox_receber:     %hhu\n", prox_receber);
+					// printf("tipo: %hhu\n", mensagem->tipo);
+                    envia_mensagem(mensagem, soquete); //envia o ACK
+					
+                    //tratamento de sequencias após envio-----------------------------------------------------------
+                    prox_enviar = sequencia(prox_enviar);
+                    prox_receber = sequencia(prox_receber);
                     // -------------------------------------------------------------------------------
 
 				} else if (mensagem->tipo == FIM_TX) {
+                    printf("entrei no caso de fim\n");
 					mensagem = cria_mensagem(prox_enviar, ACK, "");
 					envia_mensagem(mensagem, soquete);
                     fim = 1;
 				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
+                    printf("entrei no caso de nack\n");
 					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
 					//tratamento de sequencia --------------------------------------------------------
                     if (prox_receber < MAX_SEQ) {
@@ -124,38 +125,32 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
                     }
                     // -------------------------------------------------------------------------------
 				} else if (mensagem->tipo == ERRO) {
+                    printf("entrei no caso de erro\n");
 					mensagem = cria_mensagem(prox_enviar, ACK, "");
 					envia_mensagem(mensagem, soquete);
 					fim = 1;
 					printf("Erro: ");
-                    for(int i = 0; i<mensagem->tamanho; i++){
+                    /*for(int i = 0; i<mensagem->tamanho; i++){
                         printf("%c", mensagem->dados[i]);
                     }
-                    printf("\n");
+                    printf("\n");*/
 				}
 			} else if (mensagem->sequencia != prox_receber) {
-				printf("Erro: %s\n", G);
-                fim = 1; 
+                fim = 0;
+				// printf("Erro: %s\n", G);
+                // fim = 1; 
 			}
-		} else if (resultado_espera_mensagem == 2) { //TODO: NUNCA RETORNA TIMEOUT
+		} else if (deu_tuco == 2) { //TODO: NUNCA RETORNA TIMEOUT
 			printf("Timeout!!\n");
             printf("Por favor, digite o comando novamente!!\n");
             fim = 1; 
-		} else if (resultado_espera_mensagem == 1) {
+		} else if (deu_tuco == 1) {
+             printf("entrei no caso de nack 2\n");
 			mensagem = cria_mensagem(prox_enviar, NACK, "");
 			envia_mensagem(mensagem, soquete);
             //tratamento de sequencias -----------------------------------------------------------
-            if (prox_enviar < MAX_SEQ) {
-                prox_enviar++;
-            } else {
-                prox_enviar = 0x00; //se passar do limite zeramos o contador
-            }
-
-            if (prox_receber < MAX_SEQ) {
-                prox_receber++;
-            } else {
-                prox_receber = 0x00; //se passar do limite zeramos o contador
-            }
+            prox_enviar = sequencia(prox_enviar);
+            prox_receber = sequencia(prox_receber);
             // -------------------------------------------------------------------------------
 
 		}
@@ -171,7 +166,7 @@ void ls_remoto(TipoComando* tipoComando, int soquete) {
 	Mensagem *mensagem = cria_mensagem(0x00, LS, tipoComando->argumento); //cria mensagem do tipo lsr
 	envia_mensagem(mensagem, soquete); //envia mensagem do lsr
     // recebe_resposta_ls(mensagem, soquete);
-	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x00, 0x00, soquete);
+	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x01, 0x00, soquete);
 }
 
 void ls_local(TipoComando* tipoComando) {

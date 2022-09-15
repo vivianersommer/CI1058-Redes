@@ -1,4 +1,3 @@
-#include <poll.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -24,7 +23,7 @@ char *le_arquivo(char *nome){
 	long long tamanho = ftell(file);
 	rewind(file);
 
-	arquivo = (char *) malloc(tamanho);
+	arquivo = malloc(tamanho * sizeof(char)); //mexiaki
 
 	fread(arquivo, 1, tamanho, file);
 	fclose(file);
@@ -32,67 +31,29 @@ char *le_arquivo(char *nome){
 	return arquivo;
 }
 
-int processo_poll(Mensagem *mensagem, int soquete) {
-	int tenta_enviar = 0, fim = 0, poll_resultado = 0, deu_tuco = 0;
-	unsigned char resultado_paridade , *buffer = malloc(sizeof(char) * 21);
-	struct pollfd *fds;	
-	do {
-		poll_resultado = poll(fds, 1, 1000); //espera por algum evento vindo da descricao do arquivo
-		switch (poll_resultado) {
-			case -1:
-				printf("Erro na função poll, socorro!!\n");
-				printf("Ocorreu um erro que não sabemos lidar, desculpa!!\n");
-				exit(-1);
-			case 0:
-				puts("OI GATA");
-				tenta_enviar++;
-				envia_mensagem(mensagem, soquete); //tenta enviar
-				if (tenta_enviar >= 2) {
-					deu_tuco = -1;
-					fim = 1; //c h e g a, deu timeout
-                    printf("ENTREI  \n");
-				}
-				break;
-			default:
-				if (fds->revents == POLLIN) { //tem coisa pra le, corre
-					int result_receber = recv(soquete, mensagem, sizeof(struct Mensagem), 0);
-					if (mensagem->marcadorInicio == 0x7E) {
-						fim = 1;
-						resultado_paridade = paridade(mensagem->dados, mensagem->tamanho); //faz a paridade pra ver se da tudo certo
-						if (resultado_paridade == mensagem->paridade) {
-                            deu_tuco = 1; //deu tuco, RECEBEU
-                        } else {
-                            deu_tuco = 0; //NACK
-						}
-					} else {
-                        deu_tuco = 0; //NACK
-					}
-				}
-				break;
-			}
-	} while (fim == 0);
-
-    return deu_tuco;
-}
-
 void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, unsigned char prox_receber, int soquete) {
 	
-	char *buffer = malloc(MAX_DADOS * sizeof(char));
 	int i = 0, j = 0, fim = 0, enviouTudo = 0, enviouFim = 0;
 	long tamArquivo = 0; 
     int deu_tuco = 0;
 
 	// pega arquivo gerado no LS ---------------------------------------------------------
-	char *arquivo = le_arquivo(nome);
+	char *arquivo; 
+	arquivo = le_arquivo(nome); //ok aqui, esta retornando certo
 	tamArquivo = strlen(arquivo);
 	// -----------------------------------------------------------------------------------
 
 	// copia os 62 primeiros caracteres do arquivo para a variável -----------------------
-	for (int w = 0; w < MAX_DADOS && w < tamArquivo; w++) {
-		buffer[j++] = arquivo[w];
-        i = w;
+	char *buffer = malloc(MAX_DADOS * sizeof(char));
+	
+	int w;
+	for (w = 0; w < MAX_DADOS && w < tamArquivo; w++) { 
+		buffer[w] = arquivo[w];
 	}
-	buffer[j] = '\0';
+
+	i=w;
+	j=w;
+	buffer[w] = '\0';
 	// -----------------------------------------------------------------------------------
 
 	// tratamento de mensagem ------------------------------------------------------------
@@ -101,62 +62,67 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 	// -----------------------------------------------------------------------------------
     	
     // tratamento da sequencia -----------------------------------------------------------
-	if (prox_enviar < MAX_SEQ) {
-		prox_enviar++;
-	} else {
-		prox_enviar = 0x00; //se passar do limite zeramos o contador
-	}
+	prox_enviar = sequencia(prox_enviar);
     // -----------------------------------------------------------------------------------
 
+	printf("SERVIDOR: prox_enviar = %hhu e prox_receber %hhu\n", prox_enviar, prox_receber);
 	do {
-        //ACHO QUE ISSO AQUI NAO PRESTA PRA NADA
 		// verifica se mandou todo o arquivo ---------------------------------------------
-		if (i >= tamArquivo) {
-			enviouTudo = 1; //mandou
+		if (i < tamArquivo) {
+			enviouTudo = 0; //NAO mandou tudo, tamanho do arquivo é maior do que aquilo que é permitido
+		} else {
+			enviouTudo = 1;
 		}
 		// -------------------------------------------------------------------------------
 
 		deu_tuco = processo_poll(mensagem, soquete); //espera uma resposta ---------------
+
+		printf("Recebi uma mensagem do tipo %hhu\n", mensagem->tipo);
 		if (deu_tuco == 1) { //se recebeu mensagem
 			if (mensagem->sequencia == prox_receber) { //se a sequência ta certa
-				printf("if da mensagem recebida\n");
                 if (mensagem->tipo == ACK && !enviouTudo) { //se for um ACK e ainda não enviou todo o arquivo, envia os próximos caracteres
+					
+					printf("Sequencia da mensagem:%hhu  Sequencia do prox_receber:%hhu \n\n", mensagem->sequencia, prox_receber);
+
 					j = 0;
 					while (j < MAX_DADOS && i < tamArquivo) {
 						buffer[j++] = arquivo[i++];
 					}
 					buffer[j] = '\0';
 
-					cria_mensagem(prox_enviar, tipo, buffer); //cria mensagem do tipo EXIBE
-					envia_mensagem(mensagem, soquete); //envia
-					//tratamento de sequencias -----------------------------------------------------------
-					if (prox_enviar < MAX_SEQ) {
-						prox_enviar++;
-					} else {
-						prox_enviar = 0x00; //se passar do limite zeramos o contador
+					mensagem = cria_mensagem(prox_enviar, tipo, buffer); //cria mensagem do tipo EXIBE //AKI NGM TAVA RECEBENDO O QUE TAVA VOLTANDO
+					printf("-SERVIDOR\nDADOS RESTANTES:\n");
+					for(int i=0; i<mensagem->tamanho; i++){
+						printf("%c", mensagem->dados[i]);
 					}
+					printf("\n");
+					printf("prox_enviar = %d\n", prox_enviar);
+					printf("prox_receber = %d\n", prox_receber);
 
-					if (prox_receber < MAX_SEQ) {
-						prox_receber++;
-					} else {
-						prox_receber = 0x00; //se passar do limite zeramos o contador
-					}
+					envia_mensagem(mensagem, soquete); //envia
+
+					//tratamento de sequencias após envio-----------------------------------------------------------
+					prox_enviar = sequencia(prox_enviar);
+					prox_receber = sequencia(prox_receber);
 					// -------------------------------------------------------------------------------
-				} else if (mensagem->tipo == ACK && enviouTudo && !enviouFim) { //se for ACK E enviou todo arquivo E não enviou fim de arquivo
+
+				} else if (mensagem->tipo == ACK && (enviouTudo == 1) && !enviouFim) { //se for ACK E enviou todo arquivo E não enviou fim de arquivo
+					printf("entrei no caso de fim\n");
 					cria_mensagem(prox_enviar, FIM_TX, ""); //cria mensagem sinalizando fim do arquivo FIM_TX
 					envia_mensagem(mensagem, soquete); //envia mensagem
 					fim = 1;
 				} else if (mensagem->tipo == ACK && enviouTudo && enviouFim) { //se for ACK E envitou todo arquivo E enviou fim de arquivo
+					printf("entrei no caso de ack\n");
 					fim = 1;
 				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
+					printf("entrei no caso de nack\n");
 					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
-					//tratamento de sequencias -----------------------------------------------------------
-					if (prox_enviar < MAX_SEQ) {
-						prox_enviar++;
-					} else {
-						prox_enviar = 0x00; //se passar do limite zeramos o contador
-					}
+					
+					//tratamento de sequencias após envio-----------------------------------------------------------
+					prox_enviar = sequencia(prox_enviar);
 					// -------------------------------------------------------------------------------
+				} else {
+					printf("Cai no tipo %hhu, ignorando ...\n", mensagem->tipo);
 				}
 			} else if (mensagem->sequencia > prox_receber) { //se a sequência for maior do que a esperada
 				fim = 1; //sai do while
@@ -171,21 +137,14 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 
         //NACK -----------------------------------------------------------------------------------
 		} else if (deu_tuco == 0) { //se rolou algum erro
+			printf("entrei no caso de nack 2\n");
+			
 			cria_mensagem(prox_enviar, NACK, ""); // crio NHAQUE
 			envia_mensagem(mensagem, soquete); // manda famoso NHAQUE
 			
-            //tratamento de sequencias -----------------------------------------------------------
-            if (prox_enviar < MAX_SEQ) {
-                prox_enviar++;
-            } else {
-                prox_enviar = 0x00; //se passar do limite zeramos o contador
-            }
-
-            if (prox_receber < MAX_SEQ) {
-                prox_receber++;
-            } else {
-                prox_receber = 0x00; //se passar do limite zeramos o contador
-            }
+            //tratamento de sequencias após envio-----------------------------------------------------------
+            prox_enviar = sequencia(prox_enviar);
+			prox_receber = sequencia(prox_receber);
             // -------------------------------------------------------------------------------
 		}
 		// ---------------------------------------------------------------------------------------
@@ -208,7 +167,7 @@ void comando_ls(Mensagem *mensagem, int soquete){
 		system("ls > .comandoLS");
 	}
 
-	envia_arquivo(".comandoLS", MOSTRA_TELA, 0, 1, soquete); //envia o arquivo com a saída do ls
+	envia_arquivo(".comandoLS", MOSTRA_TELA, 0x00, 0x01, soquete); //envia o arquivo com a saída do ls
 	system("rm .comandoLS"); //remove o arquivo temporário
 }
 
