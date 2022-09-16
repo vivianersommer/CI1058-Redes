@@ -34,6 +34,94 @@ char *le_arquivo(char *nome){
 	return arquivo;
 }
 
+//comando get envia arquivo que cliente está solicitando
+void comando_get(Mensagem *mensagem, int soquete) {
+	char *nome_arquivo = malloc(sizeof(char) * (MAX_DADOS + 1));
+	int i = 0, fim, temPermissao, deuErro = 1;
+	unsigned int tam_arq;
+	char *erro, *tamHexa = malloc(MAX_DADOS + 1);
+	unsigned char prox_enviar = 0, prox_receber = 1;
+	FILE *arquivo;
+	
+	struct stat fileStat;
+
+	for (; i < mensagem->tamanho; i++) {
+		nome_arquivo[i] = mensagem->dados[i];
+	}
+	nome_arquivo[i] = '\0';
+
+	printf("executou: get %s\n", nome_arquivo);
+
+	arquivo = fopen(nome_arquivo, "r"); //tenta ler o arquivo
+	if (arquivo) {
+		fstat(fileno(arquivo), &fileStat);
+		//temPermissao = (fileStat.st_mode & S_IROTH); //verifica a permissão
+		tam_arq = fileStat.st_size; //recebe tamanho do arquivo
+
+		if (tam_arq > 9999999) { //se tamanho for maior que o máximo possível
+
+			mensagem = cria_mensagem(prox_enviar, ERRO, "");
+			envia_mensagem(mensagem, soquete);
+			prox_enviar = sequencia(prox_enviar);
+			deuErro = 1;
+			printf("tamanho arquivo maior que o máximo.\n");
+
+		} else {
+			sprintf(tamHexa, "%X", tam_arq); //'tamHexa' recebe 'tam' em hexa
+			mensagem = cria_mensagem(prox_enviar, DESCRITOR_DE_ARQUIVO, tamHexa); //cria mensagem como o tamanho do arquivo e envia
+			envia_mensagem(mensagem, soquete);
+			prox_enviar = sequencia(prox_enviar);
+			deuErro = 0; //tem que esperar resposta
+		}
+
+	//se arquivo não existe
+	} else { 
+		mensagem = cria_mensagem(prox_enviar, ERRO, "");
+		envia_mensagem(mensagem, soquete);
+		prox_enviar = sequencia(prox_enviar);
+		deuErro = 1;
+		printf("arquivo inexistente\n");
+	}
+
+	fim = 0;
+
+	do {
+		int deu_tuco = espera_mensagem(mensagem, soquete);
+		if (deu_tuco == 1){	unsigned int tam;
+			if (mensagem->sequencia == prox_receber) {
+				if (mensagem->tipo == ACK) {
+					fim = 1; //se deu erro é só pra esperar o ack e encerrar
+					if (!deuErro) { //se não deu erro, envia o arquivo
+						prox_receber = sequencia(prox_receber);
+						envia_arquivo(nome_arquivo, DADOS, 0, 1, soquete); //se não deu erro, envia o arquivo
+					}
+				} else if (mensagem->tipo == NACK) {
+					prox_receber = sequencia(prox_receber);
+					envia_mensagem(mensagem, soquete);
+				} else if (mensagem->tipo == ERRO) {
+					fim = 1;
+					printf("Cliente não possui espaço para receber o arquivo.\n"); //único erro que pode receber
+				}
+			} else if (mensagem->sequencia > prox_receber) {
+				fim = 1; //sai do while
+				printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
+			}
+		} else if (deu_tuco == -1) { //se o evento for um timeout
+			fim = 1; //sai do while
+			printf("Timeout, comando não executado...\n");
+		} else if (deu_tuco == 0) {
+			mensagem = cria_mensagem(prox_enviar, NACK, "");
+			envia_mensagem(mensagem, soquete);
+			prox_enviar = sequencia(prox_enviar); //incrementa prox_enviar e prox_receber
+			prox_receber = sequencia(prox_receber);
+		}
+	} while (!fim);
+
+	if (arquivo) {
+		fclose(arquivo);
+	}
+}
+
 void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, unsigned char prox_receber, int soquete) {
 	
 	int i = 0, j = 0, fim = 0, enviouTudo = 0, enviouFim = 0;
@@ -147,74 +235,119 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 	} while(!fim); //sai do while quando enviar todo o arquivo ou quando der algum erro sinistro
 }
 
-//cd remoto
-void comando_cd(Mensagem* mensagem, int soquete){
-	int i;
-	char *buffer = malloc(sizeof(char) * (MAX_DADOS + 1));
-	DIR *diretorio;
+void comando_mkdir(Mensagem *mensagem, int soquete){
+	
 	int fim = 0;
 	unsigned char prox_receber = 1;
+	struct stat st = {0};
+	char buffer[100] = "mkdir ";
+	strcat(buffer, mensagem->dados);
 
-	for(i = 0; i < mensagem->tamanho; i++) {
-		buffer[i] = mensagem->dados[i];
-	}
-	//buffer[i] = '\0';
-
-	diretorio = opendir(buffer); //abre diretorio
-	
-	struct stat st;
-	stat(buffer, &st); //que?
-
-	//int permissao;
-	//permissao = (st.st_mode & S_IROTH);
-
-	//cagando para permissao
-	if (/*permissao &&*/ diretorio) {
-		mensagem = cria_mensagem(0, OK, ""); //se recebi o diretorio crio um OK
-		chdir(buffer);
-
-		printf("Executando: cd %s\n", buffer);
-	/*} else if (!permissao) {
-		erro[0] = ERRO_PER;
-		erro[1] = '\0';
-		cria_mensagem(&e, 0, ERRO, erro);
-		//printf("Sem permissão para abrir o diretório '%s'\n", argumento);*/
-	} else /*if (errno == ENOENT)*/ {
-		//erro[0] = ERRO_DIR;
-		//erro[1] = '\0';
-		mensagem = cria_mensagem(0, ERRO, ""); //se nao crio um erro
-		printf("Diretório '%s' não existe\n", buffer);
-	}
+    if (stat(mensagem->dados, &st) == -1) {
+        mensagem = cria_mensagem(0, OK, ""); //se recebi um nome de diretorio valido crio um OK
+		printf("%s\n", buffer);
+		
+		system(buffer);
+		system("ls");
+    } else {
+        printf("Erro: esse diretório já existe!!\n");
+        fflush(stdin);
+        fflush(stdout);
+    }
 
 	envia_mensagem(mensagem, soquete); //envio resultado
-
+	
 	do {
 		int deu_tuco = espera_mensagem(mensagem, soquete);
 		if (deu_tuco == 1) {
 			if (mensagem->sequencia == prox_receber) {
 				if (mensagem->tipo == ACK) {
 					fim = 1;
-					printf("\n-CD, ENTREI NA CONDIÇÃO DE ACK\n");
+					printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE ACK\n");
 				} else if (mensagem->tipo == NACK) {
-					printf("\n-CD, ENTREI NA CONDIÇÃO DE NACK\n");
+					printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE NACK\n");
 					prox_receber = sequencia(prox_receber);
 					envia_mensagem(mensagem, soquete);
 				}
 			} else if (mensagem->sequencia > prox_receber) {
-				printf("\n-CD, ENTREI NA CONDIÇÃO DE SEQUENCIA\n");
+				printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE SEQUENCIA\n");
 				fim = 1; //sai do while
 				//printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
 			}
 		} else if (deu_tuco == 0) { //se o evento for um timeout
-		printf("\n-CD, ENTREI NA CONDIÇÃO DE timeout\n");
+		printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE timeout\n");
 			fim = 1; //sai do while
 			printf("Timeout, comando não executado...\n");
 		}
 	} while (!fim);
-	printf("TERMINEI CD\n");
+	printf("TERMINEI MKDIRR\n");
 
 
-	free(buffer);
+}
+
+
+//cd remoto
+void comando_cd(Mensagem* mensagem, int soquete){
+
+	int i = 0, fim = 0;
+	char *nome_arquivo = malloc(sizeof(char) * (MAX_DADOS));
+	unsigned char prox_receber = 1;
+
+	// copia o nome do diretório a ser criado ---------------------------------------------
+	for(i = 0; i < mensagem->tamanho; i++) {
+		nome_arquivo[i] = mensagem->dados[i];
+	}
+	// ------------------------------------------------------------------------------------
+
+	// ve se tem permissão para acessar o diretório ---------------------------------------
+	DIR *diretorio = opendir(nome_arquivo);	
+	struct stat st = {0};
+	stat(nome_arquivo, &st);
+	// ------------------------------------------------------------------------------------
+
+	// roda o CD se tiver permissão e se não der erro ao rodar o comando ------------------
+	if (diretorio >= 0) {
+		printf("Executando: cdr %s\n", nome_arquivo);
+		int entraste = chdir(nome_arquivo);
+		if (entraste >= 0) {
+			char *diretorio_atual = getcwd(0,0);
+			printf("Diretório atual após CD: %s!!\n", diretorio_atual);
+			mensagem = cria_mensagem(0x00, OK, diretorio_atual); //se recebi o diretorio crio um OK
+		} else {
+			mensagem = cria_mensagem(0x00, ERRO, A);
+			printf("Diretório: %s não encontrado!!\n", nome_arquivo);
+		}
+	} else {
+		mensagem = cria_mensagem(0x00, ERRO, B);
+		printf("Não há permissão para abrir o diretório: %s!!\n", nome_arquivo);
+	}
+	// ------------------------------------------------------------------------------------
+
+	// envio do resultado -----------------------------------------------------------------
+	envia_mensagem(mensagem, soquete); //envio resultado
+	// ------------------------------------------------------------------------------------
+
+	// espera cliente dizer que recebeu resposta ------------------------------------------
+	do {
+		int deu_tuco = espera_mensagem(mensagem, soquete);
+		if (deu_tuco == 1) {
+			if (mensagem->sequencia == prox_receber) {
+				if (mensagem->tipo == ACK) {
+					fim = 1;
+				} else if (mensagem->tipo == NACK) {
+					prox_receber = sequencia(prox_receber);
+					envia_mensagem(mensagem, soquete);
+				}
+			} else if (mensagem->sequencia > prox_receber) {
+				fim = 1; //sai do while
+			}
+		} else { //se o evento for um timeout
+			fim = 1; //sai do while
+		}
+	} while (!fim);
+	// ------------------------------------------------------------------------------------
+
+	free(nome_arquivo);
 	free(diretorio);
 }
 
@@ -250,15 +383,15 @@ void roda_servidor(int soquete){
 				 case CD: //cd
 				 	comando_cd(mensagem, soquete);
 				 	break;
-				// case 4: //get
-				// 	comando_get(mensagem);
+				 case GET: //get
+				 	comando_get(mensagem, soquete);
+				 	break;
+				// case PUT: //put
+				// 	comando_put(mensagem, soquete);
 				// 	break;
-				// case 5: //put
-				// 	comando_put(mensagem);
-				// 	break;
-				// case 6: //mkdir remoto
-				// 	comando_mkdir(mensagem);
-				// 	break;
+				 case MKDIR: //mkdir remoto
+				 	comando_mkdir(mensagem, soquete);
+				 	break;
 				default:
 					break;
 			}

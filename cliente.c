@@ -18,7 +18,7 @@ void leitura(TipoComando* tipoComando){
 
     char *linha_terminal = malloc(sizeof(char) * MAX);
 
-    char *diretorio_atual = getcwd(0, 0);
+    char *diretorio_atual = getcwd(0,0);
 	strcat(diretorio_atual, "$ ");
 	printf("%s", diretorio_atual);
     fflush(stdin);
@@ -58,6 +58,7 @@ void leitura(TipoComando* tipoComando){
     free(linha_terminal);
 }
 
+//NAO ESTAMOS USANDO ISSO
 void recebe_resposta_ls(Mensagem *mensagem, int soquete){
     do {
         recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
@@ -156,15 +157,17 @@ void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 	unsigned char prox_receber = 0;
 	int fim = 0;
 
-	//cria_mensagem(&m, 0, CDR, argumento); //cria solicitação do cd
-	//envia_mensagem(&m); //envia a mensagem
-
 	do {
 		int deu_tuco = espera_mensagem(mensagem, soquete);
 		if (deu_tuco == 1) {
 			if (mensagem->sequencia == prox_receber) {
 				if (mensagem->tipo == OK || mensagem->tipo == ERRO) {
 					fim = 1;
+                    if (mensagem->tipo == OK) {
+                        printf("Após o cdr, servidor ficou com o diretório atual: %s!!\n", mensagem->dados);
+                    } else if (mensagem->tipo == ERRO) {
+                        printf("Erro: %s!!", mensagem->dados);
+                    }
 					mensagem = cria_mensagem(1, ACK, "");
 					envia_mensagem(mensagem, soquete);
 				} else if (mensagem->tipo == NACK) {
@@ -172,32 +175,59 @@ void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 					envia_mensagem(mensagem, soquete);
 				}
 			} else if (mensagem->sequencia > prox_receber) {
-                printf("-CD CAI NA CONDIÇÃO DE SEQUENCIA\n");
 				fim = 1; //sai do while
 				printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
 			}
 		} else if (deu_tuco == 0) { //se o evento for um timeout
-			printf("-CD CAI NA CONDIÇÃO DE TIMEOUT\n");
             fim = 1; //sai do while
 			printf("Timeout, comando não executado...\n");
 		}
 	} while (!fim);
 
-	if (mensagem->tipo == ERRO) {
-		printf("Erro ao executar comando: ");
-		//exibe_erro(mensagem);
-		//fwrite(r.dados, r.tamanho, 1, stdout); //escreve os dados na tela
-		//printf("\n");
-	} else if (mensagem->tipo == ACK) {
-		printf("Comando executado com sucesso.\n");
-	}
+}
+
+void recebe_resposta_mkdir(Mensagem* mensagem, int soquete){
+	unsigned char prox_receber = 0;
+	int fim = 0;
+
+	do {
+		int deu_tuco = espera_mensagem(mensagem, soquete);
+		if (deu_tuco == 1) {
+			if (mensagem->sequencia == prox_receber) {
+				if (mensagem->tipo == OK || mensagem->tipo == ERRO) {
+					fim = 1;
+                    if (mensagem->tipo == OK) {
+                        printf("Mkdirr executado com sucesso!!\n");
+                    } else if (mensagem->tipo == ERRO) {
+                        printf("Erro: %s!!", mensagem->dados);
+                    }
+					mensagem = cria_mensagem(1, ACK, "");
+					envia_mensagem(mensagem, soquete);
+				} else if (mensagem->tipo == NACK) {
+					prox_receber = sequencia(prox_receber);
+					envia_mensagem(mensagem, soquete);
+				}
+			} else if (mensagem->sequencia > prox_receber) {
+				fim = 1; //sai do while
+			}
+		} else if (deu_tuco == 0) { //se o evento for um timeout
+            fim = 1; //sai do while
+			printf("Timeout, comando não executado...\n");
+		}
+	} while (!fim);
+}
+
+void get(TipoComando* tipoComando, int soquete){
+    Mensagem *mensagem = cria_mensagem(0x00, GET, tipoComando->argumento); //cria mensagem do tipo lsr
+	envia_mensagem(mensagem, soquete); //envia mensagem do get
+	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x01, 0x00, soquete);
 }
 
 void ls_remoto(TipoComando* tipoComando, int soquete) {
 
 	Mensagem *mensagem = cria_mensagem(0x00, LS, tipoComando->argumento); //cria mensagem do tipo lsr
 	envia_mensagem(mensagem, soquete); //envia mensagem do lsr
-    // recebe_resposta_ls(mensagem, soquete);
+     // recebe_resposta_ls(mensagem, soquete);
 	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x01, 0x00, soquete);
 }
 
@@ -212,13 +242,28 @@ void ls_local(TipoComando* tipoComando) {
 }
 
 void cd_remoto(TipoComando* tipoComando, int soquete){
+    if(tipoComando->argumento == NULL || !strcmp(tipoComando->argumento, "")){
+        printf("Comando CD precisa de um argumento!!\n");
+        return;
+    }
+    
     Mensagem *mensagem = cria_mensagem(0x00, CD, tipoComando->argumento); //cria mensagem do tipo CD
     envia_mensagem(mensagem, soquete); //envia mensagem da requisicao CD
     recebe_resposta_cd(mensagem, soquete);
 }
 
 void cd_local(TipoComando* tipoComando){
+    if(tipoComando->argumento == NULL || !strcmp(tipoComando->argumento, "")){
+        printf("Comando CD precisa de um argumento!!\n");
+        return;
+    }
     chdir(tipoComando->argumento);
+}
+
+void mkdir_remoto(TipoComando* tipoComando, int soquete){
+    Mensagem *mensagem = cria_mensagem(0x00, MKDIR, tipoComando->argumento); //cria mensagem do tipo CD
+    envia_mensagem(mensagem, soquete); //envia mensagem da requisicao CD
+    recebe_resposta_mkdir(mensagem, soquete);
 }
 
 void mkdir_local(TipoComando* tipoComando){
@@ -250,20 +295,20 @@ void comandos(int soquete){
                 ls_local(tipoComando);
                 break;
             case 2: //CD Remoto
-                 cd_remoto(tipoComando, soquete);
-                 break;
+                cd_remoto(tipoComando, soquete);
+                break;
             case 3: //CD Local
                 cd_local(tipoComando);
                 break;
-        //     case 4: //GET
-        //         comando_get(comando->argumento);
-        //         break;
+             case 4: //GET
+                 get(tipoComando, soquete);
+                 break;
         //     case 5: //PUT
         //         comando_put(comando->argumento);
         //         break;
-        //     case 6: //MKDIR Remoto
-        //         comando_cat(comando->argumento);
-        //         break;
+             case 6: //MKDIR Remoto
+                 mkdir_remoto(tipoComando, soquete);
+                 break;
             case 7: //MKDIR Local
                 mkdir_local(tipoComando);
                 break;

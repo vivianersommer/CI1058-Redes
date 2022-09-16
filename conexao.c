@@ -88,9 +88,7 @@ Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados
 	mensagem->sequencia = sequencia;
 	mensagem->tipo = tipo;
 	mensagem->paridade = paridade(dados, mensagem->tamanho);
-	//printf("O TAMANHO ERA PRA SER ASSIM: %li\n", strlen(dados));
-  // printf("O TAMANHO FICO ASSIM: %hhu\n", mensagem->tamanho);
-  for (int i = 0; i < mensagem->tamanho; i++) { //mexi aki
+  for (int i = 0; i < mensagem->tamanho; i++) { 
 		mensagem->dados[i] = dados[i];
 	}
 
@@ -99,7 +97,7 @@ Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados
 
 void envia_mensagem(Mensagem *mensagem, int soquete) {
     int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-    puts("Enviando...");
+    puts("\nEnviando...");
     
 }
 
@@ -113,26 +111,15 @@ unsigned char sequencia(unsigned char seq){
 }
 
 int espera_mensagem(Mensagem *mensagem, int soquete) {
-int count = 0;
 	  int result = recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
     // checa o marcador de início e a paridade da mensagem recebida -------------------------------------------------------
-    //while(count<1){
-      if ((mensagem->marcadorInicio == 0x7E)) {
-          count++;
-          if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade){
-              /*for(int i=0; i<mensagem->tamanho; i++)
-                printf("%c", mnsagem->dados[i]);
-              printf("\n");*/
-              // mensagem = cria_mensagem(0x00, OK, "");
-              // envia_mensagem(mensagem, soquete);
-              return 1; //mensagem recebida com paridade certa
-          } else {
-              // mensagem = cria_mensagem(0x00, ERRO, F);
-              // envia_mensagem(mensagem, soquete);
-              return 0; //erro na paridade
-          }
+    if ((mensagem->marcadorInicio == 0x7E)) {
+      if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade){
+        return 1; //mensagem recebida com paridade certa
+      } else {
+        return 0; //erro na paridade
       }
-    //}
+    }
     // --------------------------------------------------------------------------------------------------------------------
 	
     return -1; //lixo da placa de rede
