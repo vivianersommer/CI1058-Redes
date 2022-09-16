@@ -64,7 +64,7 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 	FILE *arquivo;
 
 	if (tipo == DADOS || tipo == DESCRITOR_DE_ARQUIVO) {
-		arquivo = fopen(nome, "rw"); 
+		arquivo = fopen(nome, "w+"); 
 	}
 
 	do {
@@ -102,20 +102,14 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
                     }
 
                     else if(mensagem->tipo == DESCRITOR_DE_ARQUIVO && tipo == DESCRITOR_DE_ARQUIVO){
-                        printf("DADOS: \n");
-                        for(int i=0; i < mensagem->tamanho; i++){
-                            printf("%c ", mensagem->dados[i]);
-                        }
-                        printf("\n");
-                        
-                        fwrite(mensagem->dados, mensagem->tamanho, 1, arquivo); //escreve os dados no arquivo
+                        fputs(mensagem->dados, arquivo); //escreve os dados no arquivo
                         mensagem = cria_mensagem(prox_enviar, ACK, ""); //cria um ACK
                         envia_mensagem(mensagem, soquete); //envia o ACK
-                        
                         //tratamento de sequencias após envio-----------------------------------------------------------
                         prox_enviar = sequencia(prox_enviar);
                         prox_receber = sequencia(prox_receber);
                         // -------------------------------------------------------------------------------
+                        fim = 1;
                     }
                 }
 			} else if (mensagem->sequencia != prox_receber) {
@@ -136,7 +130,7 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 		}
 	} while (!fim);
 
-	if (tipo == DADOS) {
+	if (tipo == DADOS || tipo == DESCRITOR_DE_ARQUIVO) {
 		fclose(arquivo);
 	}
 }
@@ -209,6 +203,17 @@ void recebe_resposta_mkdir(Mensagem* mensagem, int soquete){
 void get(TipoComando* tipoComando, int soquete){
     Mensagem *mensagem = cria_mensagem(0x00, GET, tipoComando->argumento); //cria mensagem do tipo get
 	envia_mensagem(mensagem, soquete); //envia mensagem do get
+
+    /*do {
+        recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
+        printf("TIPO: %i", mensagem->tipo);
+        if (mensagem->marcadorInicio == 0x7E && mensagem->tipo == OK) {
+            mensagem = cria_mensagem(0x00, ACK, "");
+            envia_mensagem(mensagem, soquete);
+            break;
+        } 
+    } while (1);*/
+    
 	recebe_arquivo(mensagem, mensagem->dados, DESCRITOR_DE_ARQUIVO, 0x01, 0x00, soquete);
 }
 
