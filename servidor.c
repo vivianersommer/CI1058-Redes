@@ -60,23 +60,22 @@ void comando_get(Mensagem *mensagem, int soquete) {
 	// copia os 62 primeiros caracteres do arquivo para a variável -----------------------
 	char *buffer = malloc(MAX_DADOS * sizeof(char));
 	
-	for (i = 0; i < MAX_DADOS && i < tamArquivo; i++) { 
-		buffer[i] = arquivo_dados[i];
-	}
-
-	//j=i;
-	buffer[i] = '\0'; //adciona um valor de fim no buffer
 	// -----------------------------------------------------------------------------------
 
 	printf("Executou: get %s\n", nome_arquivo);
 
 	arquivo = fopen(nome_arquivo, "r"); //tenta ler o arquivo
 	if (arquivo) {
+		for (i = 0; i < MAX_DADOS && i < tamArquivo; i++) { 
+			buffer[i] = arquivo_dados[i];
+		}
+
+		//j=i;
+		buffer[i] = '\0'; //adciona um valor de fim no buffer
 		fstat(fileno(arquivo), &fileStat);
 		tam_arq = fileStat.st_size; //recebe tamanho do arquivo
 
 		if (tam_arq > MAX_ARQUIVO) { //se tamanho for maior que o máximo possível
-
 			mensagem = cria_mensagem(prox_enviar, ERRO, "");
 			envia_mensagem(mensagem, soquete);
 			prox_enviar = sequencia(prox_enviar);
@@ -84,7 +83,6 @@ void comando_get(Mensagem *mensagem, int soquete) {
 			printf("Tamanho do arquivo maior que o máximo!!\n");
 
 		} else {
-			sprintf(tamHexa, "%X", tam_arq); //'tamHexa' recebe 'tam' em hexa
 			mensagem = cria_mensagem(prox_enviar, DESCRITOR_DE_ARQUIVO, buffer); //cria mensagem como o tamanho do arquivo e envia
 			envia_mensagem(mensagem, soquete);
 			prox_enviar = sequencia(prox_enviar);
@@ -111,10 +109,11 @@ void comando_get(Mensagem *mensagem, int soquete) {
 		if (deu_tuco == 1){	
 			if (mensagem->sequencia == prox_receber) {
 				if (mensagem->tipo == ACK) {
+
 					fim = 1; //se deu erro é só pra esperar o ack e encerrar
 					if (!errors) { //se não deu erro, envia o arquivo
-						prox_receber = sequencia(prox_receber);
-						envia_arquivo(nome_arquivo, DESCRITOR_DE_ARQUIVO, 0, 1, soquete); //se não deu erro, envia o arquivo
+						fim = 1;	
+						
 					}
 				} else if (mensagem->tipo == NACK) {
 					prox_receber = sequencia(prox_receber);
