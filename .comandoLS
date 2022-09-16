@@ -1,17 +1,14 @@
-.
-..
 cliente
 cliente.c
 cliente.h
-.comandoLS
 conexao.c
 conexao.h
-.git
-.gitignore
 main
 main.c
 makefile
 README.md
+RelatorioT1 - Redes.pdf
 servidor
 servidor.c
 servidor.h
+temp.txt

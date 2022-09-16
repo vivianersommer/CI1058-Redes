@@ -63,8 +63,8 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
     int fim = 0;
 	FILE *arquivo;
 
-	if (tipo == DADOS) {
-		arquivo = fopen(nome, "w"); 
+	if (tipo == DADOS || tipo == DESCRITOR_DE_ARQUIVO) {
+		arquivo = fopen(nome, "rw"); 
 	}
 
 	do {
@@ -85,29 +85,43 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
                     prox_receber = sequencia(prox_receber);
                     // -------------------------------------------------------------------------------
 
-				} else if (mensagem->tipo == FIM_TX) {
-					mensagem = cria_mensagem(prox_enviar, ACK, "");
-					envia_mensagem(mensagem, soquete);
-                    fim = 1;
-				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
-					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
-					//tratamento de sequencia --------------------------------------------------------
-                    if (prox_receber < MAX_SEQ) {
-                        prox_receber++;
-                    } else {
-                        prox_receber = 0x00; //se passar do limite zeramos o contador
+                    } else if (mensagem->tipo == FIM_TX) {
+                        mensagem = cria_mensagem(prox_enviar, ACK, "");
+                        envia_mensagem(mensagem, soquete);
+                        fim = 1;
+                    } else if (mensagem->tipo == NACK) { //se for do tipo NACK
+                        envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
+                        //tratamento de sequencia --------------------------------------------------------
+                        prox_receber = sequencia(prox_receber);
+                        // -------------------------------------------------------------------------------
+                    } else if (mensagem->tipo == ERRO) {
+                        mensagem = cria_mensagem(prox_enviar, ACK, "");
+                        envia_mensagem(mensagem, soquete);
+                        fim = 1;
+                        printf("Erro: %s\n", mensagem->dados);
                     }
-                    // -------------------------------------------------------------------------------
-				} else if (mensagem->tipo == ERRO) {
-					mensagem = cria_mensagem(prox_enviar, ACK, "");
-					envia_mensagem(mensagem, soquete);
-					fim = 1;
-					printf("Erro: %s\n", mensagem->dados);
-				}
+
+                    else if(mensagem->tipo == DESCRITOR_DE_ARQUIVO && tipo == DESCRITOR_DE_ARQUIVO){
+                        printf("DADOS: \n");
+                        for(int i=0; i < mensagem->tamanho; i++){
+                            printf("%c ", mensagem->dados[i]);
+                        }
+                        printf("\n");
+                        
+                        fwrite(mensagem->dados, mensagem->tamanho, 1, arquivo); //escreve os dados no arquivo
+                        mensagem = cria_mensagem(prox_enviar, ACK, ""); //cria um ACK
+                        envia_mensagem(mensagem, soquete); //envia o ACK
+                        
+                        //tratamento de sequencias após envio-----------------------------------------------------------
+                        prox_enviar = sequencia(prox_enviar);
+                        prox_receber = sequencia(prox_receber);
+                        // -------------------------------------------------------------------------------
+                    }
+                }
 			} else if (mensagem->sequencia != prox_receber) {
                 fim = 0;
 			}
-		} else if (deu_tuco == 2) { 
+		 else if (deu_tuco == 2) { 
 			printf("Timeout!!\n");
             printf("Por favor, digite o comando novamente!!\n");
             fim = 1; 
@@ -126,6 +140,7 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 		fclose(arquivo);
 	}
 }
+
 
 void recebe_resposta_cd(Mensagem* mensagem, int soquete) {
 	unsigned char prox_receber = 0;
@@ -192,9 +207,9 @@ void recebe_resposta_mkdir(Mensagem* mensagem, int soquete){
 }
 
 void get(TipoComando* tipoComando, int soquete){
-    Mensagem *mensagem = cria_mensagem(0x00, GET, tipoComando->argumento); //cria mensagem do tipo lsr
+    Mensagem *mensagem = cria_mensagem(0x00, GET, tipoComando->argumento); //cria mensagem do tipo get
 	envia_mensagem(mensagem, soquete); //envia mensagem do get
-	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x01, 0x00, soquete);
+	recebe_arquivo(mensagem, mensagem->dados, DESCRITOR_DE_ARQUIVO, 0x01, 0x00, soquete);
 }
 
 void ls_remoto(TipoComando* tipoComando, int soquete) {
@@ -245,7 +260,7 @@ void mkdir_local(TipoComando* tipoComando){
     if (stat(tipoComando->argumento, &st) == -1) {
         mkdir(tipoComando->argumento, 0700);
     } else {
-        printf("Erro: esse diretório já existe!!\n");
+        printf("%s\n", C);
         fflush(stdin);
         fflush(stdout);
     }

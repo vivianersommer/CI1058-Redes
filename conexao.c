@@ -17,7 +17,7 @@
 int habilitar_rede(){
 
   // eno1
-    int soquete = ConexaoRawSocket("lo"); // TODO: quando for para o cabo, usar eth0
+    int soquete = ConexaoRawSocket("enp3s0"); // TODO: quando for para o cabo, usar eth0
     return soquete;
 }
 

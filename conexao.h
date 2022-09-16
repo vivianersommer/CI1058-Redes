@@ -4,6 +4,7 @@
 #define MAX_DADOS 63 // (2^6-1)
 #define MAX_SEQ 15
 #define MAX_TENTATIVAS 10
+#define MAX_ARQUIVO 17592186044416 // 2⁴⁴
 
 //TIPOS:
 #define CD 0x06

@@ -36,19 +36,37 @@ char *le_arquivo(char *nome){
 
 //comando get envia arquivo que cliente está solicitando
 void comando_get(Mensagem *mensagem, int soquete) {
+
 	char *nome_arquivo = malloc(sizeof(char) * (MAX_DADOS + 1));
-	int i = 0, fim, temPermissao, deuErro = 1;
-	unsigned int tam_arq;
-	char *erro, *tamHexa = malloc(MAX_DADOS + 1);
-	unsigned char prox_enviar = 0, prox_receber = 1;
+	char *tamHexa = malloc(sizeof(char) * MAX_DADOS + 1);
+	int i = 0, fim = 0, errors = 1;
+	unsigned int tam_arq = 0x00;
+	unsigned char prox_enviar = 0x00, prox_receber = 0x01;
 	FILE *arquivo;
-	
 	struct stat fileStat;
 
-	for (; i < mensagem->tamanho; i++) {
+	for (i=0; i < mensagem->tamanho; i++) {
 		nome_arquivo[i] = mensagem->dados[i];
 	}
+	
 	nome_arquivo[i] = '\0';
+
+	// pega arquivo gerado no LS ---------------------------------------------------------
+	char *arquivo_dados; 
+	arquivo_dados = le_arquivo(nome_arquivo);
+	int tamArquivo = strlen(arquivo_dados);
+	// -----------------------------------------------------------------------------------
+
+	// copia os 62 primeiros caracteres do arquivo para a variável -----------------------
+	char *buffer = malloc(MAX_DADOS * sizeof(char));
+	
+	for (i = 0; i < MAX_DADOS && i < tamArquivo; i++) { 
+		buffer[i] = arquivo_dados[i];
+	}
+
+	//j=i;
+	buffer[i] = '\0'; //adciona um valor de fim no buffer
+	// -----------------------------------------------------------------------------------
 
 	printf("Executou: get %s\n", nome_arquivo);
 
@@ -57,20 +75,20 @@ void comando_get(Mensagem *mensagem, int soquete) {
 		fstat(fileno(arquivo), &fileStat);
 		tam_arq = fileStat.st_size; //recebe tamanho do arquivo
 
-		if (tam_arq > 9999999) { //se tamanho for maior que o máximo possível
+		if (tam_arq > MAX_ARQUIVO) { //se tamanho for maior que o máximo possível
 
 			mensagem = cria_mensagem(prox_enviar, ERRO, "");
 			envia_mensagem(mensagem, soquete);
 			prox_enviar = sequencia(prox_enviar);
-			deuErro = 1;
-			printf("Tamanho arquivo maior que o máximo.\n");
+			errors = 1;
+			printf("Tamanho do arquivo maior que o máximo!!\n");
 
 		} else {
 			sprintf(tamHexa, "%X", tam_arq); //'tamHexa' recebe 'tam' em hexa
-			mensagem = cria_mensagem(prox_enviar, DESCRITOR_DE_ARQUIVO, tamHexa); //cria mensagem como o tamanho do arquivo e envia
+			mensagem = cria_mensagem(prox_enviar, DESCRITOR_DE_ARQUIVO, buffer); //cria mensagem como o tamanho do arquivo e envia
 			envia_mensagem(mensagem, soquete);
 			prox_enviar = sequencia(prox_enviar);
-			deuErro = 0; //tem que esperar resposta
+			errors = 0; 
 		}
 
 	//se arquivo não existe
@@ -78,32 +96,36 @@ void comando_get(Mensagem *mensagem, int soquete) {
 		mensagem = cria_mensagem(prox_enviar, ERRO, "");
 		envia_mensagem(mensagem, soquete);
 		prox_enviar = sequencia(prox_enviar);
-		deuErro = 1;
+		errors = 1;
 		printf("Arquivo inexistente\n");
 	}
 
-	fim = 0;
+	// se deu erro ao tentar enviar primeira mensagem, ja nem envia as proximas
+	if (errors == 1){
+		return;
+	}
 
 	do {
 		int deu_tuco = espera_mensagem(mensagem, soquete);
-		if (deu_tuco == 1){	unsigned int tam;
+		printf("TIPO = %d\n", mensagem->tipo);
+		if (deu_tuco == 1){	
 			if (mensagem->sequencia == prox_receber) {
 				if (mensagem->tipo == ACK) {
 					fim = 1; //se deu erro é só pra esperar o ack e encerrar
-					if (!deuErro) { //se não deu erro, envia o arquivo
+					if (!errors) { //se não deu erro, envia o arquivo
 						prox_receber = sequencia(prox_receber);
-						envia_arquivo(nome_arquivo, DADOS, 0, 1, soquete); //se não deu erro, envia o arquivo
+						envia_arquivo(nome_arquivo, DESCRITOR_DE_ARQUIVO, 0, 1, soquete); //se não deu erro, envia o arquivo
 					}
 				} else if (mensagem->tipo == NACK) {
 					prox_receber = sequencia(prox_receber);
 					envia_mensagem(mensagem, soquete);
 				} else if (mensagem->tipo == ERRO) {
 					fim = 1;
-					printf("Cliente não possui espaço para receber o arquivo.\n"); //único erro que pode receber
+					printf("%s\n", E); //tem espaco nao
 				}
 			} else if (mensagem->sequencia > prox_receber) {
 				fim = 1; //sai do while
-				printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
+				printf("%s\n", G); //deu ruim na sequencia
 			}
 		} else if (deu_tuco == -1) { //se o evento for um timeout
 			fim = 1; //sai do while
@@ -141,7 +163,7 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 	}
 
 	j=i;
-	buffer[i] = '\0'; //adciona o fim no buffer
+	buffer[i] = '\0'; //adciona um valor de fim no buffer
 	// -----------------------------------------------------------------------------------
 
 	// tratamento de mensagem ------------------------------------------------------------
@@ -201,7 +223,7 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 				} 
 				
 			} else if (mensagem->sequencia > prox_receber) { //se a sequência for maior do que a esperada
-				printf("Mensagem com sequência maior do que a esperada, encerrando a transmissão...\n seq: %d e esperava: %d\n", mensagem->sequencia, prox_receber);
+				printf("%s\n", G); //problema na sequencia
 				
 				fim = 1; //sai do while
 			}
@@ -241,7 +263,7 @@ void comando_mkdir(Mensagem *mensagem, int soquete){
 		system(buffer);
 		system("ls");
     } else {
-        printf("Erro: esse diretório já existe!!\n");
+		printf("%s\n", C);
         fflush(stdin);
         fflush(stdout);
     }
@@ -260,7 +282,7 @@ void comando_mkdir(Mensagem *mensagem, int soquete){
 				}
 			} else if (mensagem->sequencia > prox_receber) {
 				fim = 1; //sai do while
-				//printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
+				printf("%s\n", G);
 			}
 		} else if (deu_tuco == 0) { //se o evento for um timeout
 			fim = 1; //sai do while
@@ -303,7 +325,8 @@ void comando_cd(Mensagem* mensagem, int soquete){
 		}
 	} else {
 		mensagem = cria_mensagem(0x00, ERRO, B);
-		printf("Não há permissão para abrir o diretório: %s!!\n", nome_arquivo);
+		printf("%s\n", B);
+		
 	}
 	// ------------------------------------------------------------------------------------
 
