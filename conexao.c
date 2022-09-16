@@ -16,15 +16,13 @@
 
 int habilitar_rede(){
 
-    // system("ifconfig eth0 promisc");
+  // eno1
     int soquete = ConexaoRawSocket("lo"); // TODO: quando for para o cabo, usar eth0
     return soquete;
 }
 
 void desabilitar_rede(int soquete){
-
-    close(soquete);
-	// system("ifconfig eth0 -promisc");
+  close(soquete);
 }
 
 int ConexaoRawSocket(char *device)
@@ -96,9 +94,7 @@ Mensagem *cria_mensagem(unsigned char sequencia, unsigned char tipo, char *dados
 }
 
 void envia_mensagem(Mensagem *mensagem, int soquete) {
-    int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);
-    puts("\nEnviando...");
-    
+    int result_enviar = send(soquete, mensagem, sizeof(struct Mensagem), 0);    
 }
 
 unsigned char sequencia(unsigned char seq){
@@ -128,41 +124,20 @@ int espera_mensagem(Mensagem *mensagem, int soquete) {
 int processo_poll(Mensagem *mensagem, int soquete) {
 	int tenta_enviar = 0, fim = 0, poll_resultado = 0, deu_tuco = 0;
 	unsigned char resultado_paridade , *buffer = malloc(sizeof(char) * 21);
-	//printf(mensagem->dados[i])
 	struct pollfd *fds;	
 	do {
 		poll_resultado = poll(fds, 1, 1000); //espera por algum evento vindo da descricao do arquivo
-		switch (poll_resultado) {
-			/*case -1:
-				printf("Erro na função poll, socorro!!\n");
-				printf("Ocorreu um erro que não sabemos lidar, desculpa!!\n");
-				exit(-1);
-			case 0:
-				puts("OI GATA");
-				tenta_enviar++;
-				envia_mensagem(mensagem, soquete); //tenta enviar
-				if (tenta_enviar >= 2) {
-					deu_tuco = -1;
-					fim = 1; //c h e g a, deu timeout
-				}
-				break;*/
-			default:
-				//if (fds->revents == POLLIN) { //tem coisa pra le, corre
-					recv(soquete, mensagem, sizeof(struct Mensagem), 0);
-					if (mensagem->marcadorInicio == 0x7E) {
-						fim = 1;
-						if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade) {
-						  // mensagem->sequencia++; //mexi aki
-              deu_tuco = 1; //deu tuco, RECEBEU
-            } else {
-              deu_tuco = 0; //NACK
-						}
-					} else {
-            deu_tuco = 0; //NACK
-					}
-				//}
-				break;
-			}
+    recv(soquete, mensagem, sizeof(struct Mensagem), 0);
+    if (mensagem->marcadorInicio == 0x7E) {
+      fim = 1;
+      if (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade) {
+        deu_tuco = 1; //deu tuco, RECEBEU
+      } else {
+        deu_tuco = 0; //NACK
+      }
+    } else {
+      deu_tuco = 0; //NACK
+    }
 	} while (deu_tuco == 0);
   return deu_tuco;
 }

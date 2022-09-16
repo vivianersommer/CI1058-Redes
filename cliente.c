@@ -58,26 +58,6 @@ void leitura(TipoComando* tipoComando){
     free(linha_terminal);
 }
 
-//NAO ESTAMOS USANDO ISSO
-void recebe_resposta_ls(Mensagem *mensagem, int soquete){
-    do {
-        recv(soquete, mensagem, sizeof(struct Mensagem), 0); // leitura do soquete
-        if ((mensagem->marcadorInicio == 0x7E) && (paridade(mensagem->dados, mensagem->tamanho) == mensagem->paridade)) {
-            if (mensagem->tipo == OK) { //se servidor devolveu um OK, está tudo certo
-                break;
-            } else if (mensagem->tipo == ERRO){ // se servidor devolveu um ERRO, pede pro usuário redigitar o comando
-                printf("Erro: ");
-                for(int i = 0; i<mensagem->tamanho; i++){
-                    printf("%c", mensagem->dados[i]);
-                }
-                printf("\n");
-                printf("Por favor, digite o comando novamente!!\n");
-                break;
-            }
-        }
-    }while(1);
-}
-
 void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned char prox_enviar, unsigned char prox_receber, int soquete) {
 	
     int fim = 0;
@@ -85,7 +65,6 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 
 	if (tipo == DADOS) {
 		arquivo = fopen(nome, "w"); 
-		// chmod(nome, (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)); //seta as permissões
 	}
 
 	do {
@@ -111,7 +90,6 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 					envia_mensagem(mensagem, soquete);
                     fim = 1;
 				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
-                    printf("entrei no caso de nack\n");
 					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
 					//tratamento de sequencia --------------------------------------------------------
                     if (prox_receber < MAX_SEQ) {
@@ -121,7 +99,6 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
                     }
                     // -------------------------------------------------------------------------------
 				} else if (mensagem->tipo == ERRO) {
-                    printf("entrei no caso de erro\n");
 					mensagem = cria_mensagem(prox_enviar, ACK, "");
 					envia_mensagem(mensagem, soquete);
 					fim = 1;
@@ -129,15 +106,12 @@ void recebe_arquivo(Mensagem *mensagem, char *nome, unsigned char tipo, unsigned
 				}
 			} else if (mensagem->sequencia != prox_receber) {
                 fim = 0;
-				// printf("Erro: %s\n", G);
-                // fim = 1; 
 			}
-		} else if (deu_tuco == 2) { //TODO: NUNCA RETORNA TIMEOUT
+		} else if (deu_tuco == 2) { 
 			printf("Timeout!!\n");
             printf("Por favor, digite o comando novamente!!\n");
             fim = 1; 
 		} else if (deu_tuco == 1) {
-             printf("entrei no caso de nack 2\n");
 			mensagem = cria_mensagem(prox_enviar, NACK, "");
 			envia_mensagem(mensagem, soquete);
             //tratamento de sequencias -----------------------------------------------------------
@@ -227,7 +201,6 @@ void ls_remoto(TipoComando* tipoComando, int soquete) {
 
 	Mensagem *mensagem = cria_mensagem(0x00, LS, tipoComando->argumento); //cria mensagem do tipo lsr
 	envia_mensagem(mensagem, soquete); //envia mensagem do lsr
-     // recebe_resposta_ls(mensagem, soquete);
 	recebe_arquivo(mensagem, "", MOSTRA_TELA, 0x01, 0x00, soquete);
 }
 
@@ -300,13 +273,13 @@ void comandos(int soquete){
             case 3: //CD Local
                 cd_local(tipoComando);
                 break;
-             case 4: //GET
+            case 4: //GET
                  get(tipoComando, soquete);
                  break;
         //     case 5: //PUT
         //         comando_put(comando->argumento);
         //         break;
-             case 6: //MKDIR Remoto
+            case 6: //MKDIR Remoto
                  mkdir_remoto(tipoComando, soquete);
                  break;
             case 7: //MKDIR Local

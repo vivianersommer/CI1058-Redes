@@ -50,12 +50,11 @@ void comando_get(Mensagem *mensagem, int soquete) {
 	}
 	nome_arquivo[i] = '\0';
 
-	printf("executou: get %s\n", nome_arquivo);
+	printf("Executou: get %s\n", nome_arquivo);
 
 	arquivo = fopen(nome_arquivo, "r"); //tenta ler o arquivo
 	if (arquivo) {
 		fstat(fileno(arquivo), &fileStat);
-		//temPermissao = (fileStat.st_mode & S_IROTH); //verifica a permissão
 		tam_arq = fileStat.st_size; //recebe tamanho do arquivo
 
 		if (tam_arq > 9999999) { //se tamanho for maior que o máximo possível
@@ -64,7 +63,7 @@ void comando_get(Mensagem *mensagem, int soquete) {
 			envia_mensagem(mensagem, soquete);
 			prox_enviar = sequencia(prox_enviar);
 			deuErro = 1;
-			printf("tamanho arquivo maior que o máximo.\n");
+			printf("Tamanho arquivo maior que o máximo.\n");
 
 		} else {
 			sprintf(tamHexa, "%X", tam_arq); //'tamHexa' recebe 'tam' em hexa
@@ -80,7 +79,7 @@ void comando_get(Mensagem *mensagem, int soquete) {
 		envia_mensagem(mensagem, soquete);
 		prox_enviar = sequencia(prox_enviar);
 		deuErro = 1;
-		printf("arquivo inexistente\n");
+		printf("Arquivo inexistente\n");
 	}
 
 	fim = 0;
@@ -185,20 +184,15 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
 					// -------------------------------------------------------------------------------
 
 				} else if (mensagem->tipo == ACK && (enviouTudo == 1) && !enviouFim) { //se for ACK E enviou todo arquivo E não enviou fim de arquivo
-					printf("entrei no caso de fim\n");
-
 					mensagem = cria_mensagem(prox_enviar, FIM_TX, ""); //cria mensagem sinalizando fim do arquivo FIM_TX
 					envia_mensagem(mensagem, soquete); //envia mensagem
 				
 					fim = 1; //sai do while
 				
-				} else if (mensagem->tipo == ACK && enviouTudo && enviouFim) { //se for ACK E envitou todo arquivo E enviou fim de arquivo
-					printf("entrei no caso de ack\n");
-				
+				} else if (mensagem->tipo == ACK && enviouTudo && enviouFim) { //se for ACK E envitou todo arquivo E enviou fim de arquivo				
 					fim = 1; //sai do while
 				
 				} else if (mensagem->tipo == NACK) { //se for do tipo NACK
-					printf("entrei no caso de nack\n");
 					envia_mensagem(mensagem, soquete); //envia a mesma mensagem novamente
 					
 					//tratamento de sequencias após envio-----------------------------------------------------------
@@ -219,9 +213,7 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
         // ---------------------------------------------------------------------------------------
 
         //NACK -----------------------------------------------------------------------------------
-		} else if (deu_tuco == 0) { //se rolou algum erro
-			printf("entrei no caso de nack 2\n");
-			
+		} else if (deu_tuco == 0) { //se rolou algum erro			
 			cria_mensagem(prox_enviar, NACK, ""); // crio NHAQUE
 			envia_mensagem(mensagem, soquete); // manda famoso NHAQUE
 			
@@ -231,7 +223,6 @@ void envia_arquivo(char *nome, unsigned char tipo, unsigned char prox_enviar, un
             // -------------------------------------------------------------------------------
 		}
 		// ---------------------------------------------------------------------------------------
-        // printf("NAO TERMINEI\n");
 	} while(!fim); //sai do while quando enviar todo o arquivo ou quando der algum erro sinistro
 }
 
@@ -263,26 +254,19 @@ void comando_mkdir(Mensagem *mensagem, int soquete){
 			if (mensagem->sequencia == prox_receber) {
 				if (mensagem->tipo == ACK) {
 					fim = 1;
-					printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE ACK\n");
 				} else if (mensagem->tipo == NACK) {
-					printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE NACK\n");
 					prox_receber = sequencia(prox_receber);
 					envia_mensagem(mensagem, soquete);
 				}
 			} else if (mensagem->sequencia > prox_receber) {
-				printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE SEQUENCIA\n");
 				fim = 1; //sai do while
 				//printf("Mensagem com sequência maior do que a esperada, comando não executado...\n");
 			}
 		} else if (deu_tuco == 0) { //se o evento for um timeout
-		printf("\n-MKDIR, ENTREI NA CONDIÇÃO DE timeout\n");
 			fim = 1; //sai do while
 			printf("Timeout, comando não executado...\n");
 		}
 	} while (!fim);
-	printf("TERMINEI MKDIRR\n");
-
-
 }
 
 
@@ -367,7 +351,6 @@ void comando_ls(Mensagem *mensagem, int soquete){
 	}
 
 	envia_arquivo(".comandoLS", MOSTRA_TELA, 0x00, 0x01, soquete); //envia o arquivo com a saída do ls
-	// system("rm .comandoLS"); //remove o arquivo temporário
 }
 
 
